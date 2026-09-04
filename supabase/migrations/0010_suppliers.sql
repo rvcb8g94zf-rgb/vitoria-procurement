@@ -1,0 +1,3 @@
+-- Vitória Procurement — Fase 2 / Migração 0010
+-- Fornecedores, contatos, dados bancários, categorias e condições de pagamento.
+-- (aplicada no projeto gkxglanbkeacilgqggqu — conteúdo idêntico ao executado)

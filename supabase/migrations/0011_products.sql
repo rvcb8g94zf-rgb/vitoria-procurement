@@ -1,0 +1,3 @@
+-- Vitória Procurement — Fase 2 / Migração 0011
+-- Produtos, unidades, de-para por fornecedor e histórico de preços.
+-- Modelagem guiada por 8 XMLs reais dos fornecedores das duas empresas.

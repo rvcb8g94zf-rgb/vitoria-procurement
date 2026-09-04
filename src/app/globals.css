@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ink:#101614; --graphite:#5A6663; --muted:#8A9490;
+  --line:#E2E6E4; --line-soft:#EDF0EF;
+  --canvas:#F5F6F5; --surface:#FFFFFF; --raise:#FAFBFA;
+  --accent:#0B6B4F; --accent-ink:#075139; --accent-soft:#E6F1EC;
+  --warn:#9A5B06; --warn-soft:#FBF0DF;
+  --danger:#A81F1A; --danger-soft:#FBEAE9;
+  --info:#1B558F; --info-soft:#E8F0F9;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --ink:#E8EDEB; --graphite:#A3AEAA; --muted:#79837F;
+  --line:#232B29; --line-soft:#1C2321;
+  --canvas:#0C100F; --surface:#121715; --raise:#171D1B;
+  --accent:#3FA383; --accent-ink:#5CBB9C; --accent-soft:#132A23;
+  --warn:#D6A05A; --warn-soft:#2A2114;
+  --danger:#E08079; --danger-soft:#2B1614;
+  --info:#7FAEE0; --info-soft:#131F2C;
+  color-scheme: dark;
+}
+
+@layer base {
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 { @apply font-display; letter-spacing: -0.018em; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+}
+
+@layer components {
+  .card { @apply bg-surface border border-line rounded; }
+  .btn {
+    @apply inline-flex h-8 items-center gap-1.5 rounded-sm border border-line
+           bg-surface px-3 text-[12.5px] font-semibold transition-colors
+           hover:border-graphite disabled:opacity-50 disabled:pointer-events-none;
+  }
+  .btn-primary { @apply bg-accent border-accent text-white hover:bg-accent-ink hover:border-accent-ink; }
+  .field {
+    @apply h-9 w-full rounded-sm border border-line bg-surface px-3 text-[13px]
+           placeholder:text-muted focus:border-accent focus:outline-none;
+  }
+  .label { @apply mb-1.5 block text-[11.5px] font-medium text-graphite; }
+  .badge { @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium; }
+  .th { @apply bg-raise px-3.5 py-2.5 text-left text-[10.5px] font-semibold tracking-[0.07em] text-muted; }
+  .td { @apply border-b border-line-soft px-3.5 py-3 text-[12.5px] align-middle; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
