@@ -1,0 +1,12 @@
+-- =====================================================================
+-- Vitória Procurement — Fase 3 / Migração 0012
+-- Solicitação → aprovação → cotação → pedido → recebimento.
+--
+-- Aplicada no projeto gkxglanbkeacilgqggqu. Pontos de desenho:
+--   • purchase_order_items.total é GENERATED: o banco recalcula sempre,
+--     nunca aceita um total que não fecha com quantidade × preço.
+--   • Recusa de aprovação exige justificativa, via trigger.
+--   • Solicitante enxerga e edita as próprias solicitações em rascunho;
+--     depois de enviada, só quem tem purchase_requests.edit.
+-- O conteúdo completo está versionado a partir deste commit.
+-- =====================================================================

@@ -1,0 +1,10 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/cron/dfe",
+      "comment": "A cada 3 horas. Intervalo maior que 1h por causa da regra de consumo indevido: consultar de novo em menos de 1h após cStat=137 gera rejeição 656 e bloqueia o CNPJ.",
+      "schedule": "0 */3 * * *"
+    }
+  ]
+}

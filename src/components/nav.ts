@@ -35,6 +35,7 @@ export const NAV: NavGroup[] = [
     title: "NOTAS FISCAIS",
     items: [
       { label: "Todas as notas", href: "/notas", module: "invoices", icon: "Receipt" },
+      { label: "Consulta automática", href: "/notas/consulta", module: "invoices", icon: "RadioTower" },
       { label: "Importar XML", href: "/notas/importar", module: "xml_import", icon: "Upload" },
       { label: "Divergências", href: "/notas/divergencias", module: "divergences", icon: "TriangleAlert" },
       { label: "Validar cadastros", href: "/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck" },

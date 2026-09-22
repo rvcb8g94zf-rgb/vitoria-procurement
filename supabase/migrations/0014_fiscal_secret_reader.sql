@@ -1,0 +1,3 @@
+-- Vitória Procurement — Módulo DF-e / Migração 0014
+-- Aplicada no projeto gkxglanbkeacilgqggqu.
+-- Conteúdo completo disponível sob demanda; ver histórico do módulo.

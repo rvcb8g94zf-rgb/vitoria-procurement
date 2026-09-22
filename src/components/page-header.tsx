@@ -1,7 +1,7 @@
 export function PageHeader({
   crumb, title, description, actions,
 }: {
-  crumb?: string;
+  crumb?: React.ReactNode;
   title: string;
   description?: string;
   actions?: React.ReactNode;

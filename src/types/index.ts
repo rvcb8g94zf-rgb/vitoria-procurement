@@ -81,3 +81,125 @@ export interface Membership {
   role: Role;
   is_default: boolean;
 }
+
+// ---------- Fase 2 ----------
+
+export type PartyDocType = "cnpj" | "cpf";
+export type SupplierStatus = "ativo" | "inativo" | "bloqueado" | "pendente";
+
+export interface Unit {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface Category {
+  id: string;
+  company_id: string;
+  kind: "supplier" | "product";
+  name: string;
+  is_active: boolean;
+}
+
+export interface PaymentTerm {
+  id: string;
+  company_id: string;
+  code: string;
+  name: string;
+  days: number[];
+  is_active: boolean;
+}
+
+export interface Supplier {
+  id: string;
+  company_id: string;
+  code: string | null;
+  doc_type: PartyDocType;
+  doc_number: string;
+  legal_name: string;
+  trade_name: string | null;
+  state_reg: string | null;
+  zip_code: string | null;
+  street: string | null;
+  street_number: string | null;
+  district: string | null;
+  city: string | null;
+  state_uf: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  category_id: string | null;
+  payment_term_id: string | null;
+  avg_lead_days: number | null;
+  credit_limit: number;
+  notes: string | null;
+  status: SupplierStatus;
+}
+
+export interface SupplierContact {
+  id: string;
+  supplier_id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  is_primary: boolean;
+}
+
+export interface SupplierBankAccount {
+  id: string;
+  supplier_id: string;
+  bank_code: string | null;
+  bank_name: string | null;
+  agency: string | null;
+  account: string | null;
+  account_type: string | null;
+  pix_type: string | null;
+  pix_key: string | null;
+  is_default: boolean;
+}
+
+export interface Product {
+  id: string;
+  company_id: string;
+  sku: string;
+  description: string;
+  unit_id: string;
+  category_id: string | null;
+  brand: string | null;
+  ncm: string | null;
+  cest: string | null;
+  ean: string | null;
+  min_stock: number;
+  notes: string | null;
+  is_active: boolean;
+}
+
+export interface SupplierProduct {
+  id: string;
+  supplier_id: string;
+  product_id: string | null;
+  supplier_code: string;
+  supplier_desc: string | null;
+  supplier_unit_raw: string | null;
+  conversion_factor: number;
+  ean: string | null;
+  ncm: string | null;
+  last_unit_price: number | null;
+  last_purchase_at: string | null;
+  is_confirmed: boolean;
+}
+
+export interface PriceHistoryRow {
+  id: string;
+  product_id: string;
+  supplier_id: string | null;
+  occurred_on: string;
+  unit_price: number;
+  quantity: number;
+  /** custo cheio, com ST e frete rateados */
+  landed_price: number | null;
+  document_ref: string | null;
+}
