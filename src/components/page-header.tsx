@@ -8,7 +8,7 @@ export function PageHeader({
 }) {
   return (
     <div className="mb-5">
-      {crumb && <div className="mb-1.5 text-[11.5px] text-muted">{crumb}</div>}
+      {crumb && <div className="mb-1.5 text-[11.5px] text-muted print:hidden">{crumb}</div>}
       <div className="flex flex-wrap items-end gap-4">
         <div>
           <h1 className="text-[22px] font-semibold">{title}</h1>

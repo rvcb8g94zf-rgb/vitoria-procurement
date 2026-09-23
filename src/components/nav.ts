@@ -44,6 +44,7 @@ export const NAV: NavGroup[] = [
   {
     title: "FINANCEIRO",
     items: [
+      { label: "Fechamento de caixa", href: "/financeiro/caixa", module: "cash", icon: "Banknote" },
       { label: "Duplicatas", href: "/financeiro/duplicatas", module: "installments", icon: "CreditCard" },
       { label: "Contas a pagar", href: "/financeiro/contas-a-pagar", module: "accounts_payable", icon: "Wallet" },
       { label: "Pagamentos", href: "/financeiro/pagamentos", module: "payments", icon: "ArrowLeftRight" },

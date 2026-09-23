@@ -10,6 +10,8 @@
   --warn:#9A5B06; --warn-soft:#FBF0DF;
   --danger:#A81F1A; --danger-soft:#FBEAE9;
   --info:#1B558F; --info-soft:#E8F0F9;
+  /* gráficos: verde da marca num passo com croma suficiente (validado) */
+  --viz-1:#0F7A58;
   color-scheme: light;
 }
 
@@ -21,6 +23,7 @@
   --warn:#D6A05A; --warn-soft:#2A2114;
   --danger:#E08079; --danger-soft:#2B1614;
   --info:#7FAEE0; --info-soft:#131F2C;
+  --viz-1:#3FA383;
   color-scheme: dark;
 }
 
@@ -54,4 +57,38 @@
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* Impressão: relatórios saem sem menu, em papel branco (mesmo com o tema
+   escuro ligado), com tabelas mais compactas e sem cortar conteúdo. */
+@media print {
+  :root, [data-theme="dark"] {
+    --ink:#101614; --graphite:#4A5553; --muted:#6B7572;
+    --line:#D5DBD8; --line-soft:#E6EAE8;
+    --canvas:#FFFFFF; --surface:#FFFFFF; --raise:#FFFFFF;
+    --accent:#0B6B4F; --accent-ink:#075139; --accent-soft:#E6F1EC;
+    --warn:#9A5B06; --warn-soft:#FBF0DF;
+    --danger:#A81F1A; --danger-soft:#FBEAE9;
+    --info:#1B558F; --info-soft:#E8F0F9;
+    --viz-1:#0F7A58;
+    color-scheme: light;
+  }
+  body { background: #FFFFFF; font-size: 11px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* contêiner com rolagem imprime só a primeira página no Chrome */
+  .overflow-x-auto, .overflow-y-auto, .overflow-auto { overflow: visible !important; }
+  .card { break-inside: avoid; }
+  .card.print-break-ok { break-inside: auto; }   /* tabelas longas seguem na página seguinte */
+  tr { break-inside: avoid; }
+  .mbars td { padding-top: 3px; padding-bottom: 3px; }
+  .extrato td, .extrato th { padding-top: 1px; padding-bottom: 1px; }
+  .kpi-grid > div { padding: 6px 10px; }
+  .card-head { padding-top: 6px; padding-bottom: 6px; }
+  /* total só no fim da tabela, não repetido em cada página */
+  tfoot { display: table-row-group; }
+  .kpi-grid { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)) !important; }
+  .kpi-value { font-size: 15px; }
+  .th { padding: 5px 6px; font-size: 9.5px; }
+  .td { padding: 4px 6px; font-size: 10.5px; }
+  a { color: inherit; text-decoration: none; }
+  @page { size: A4 landscape; margin: 12mm; }
 }

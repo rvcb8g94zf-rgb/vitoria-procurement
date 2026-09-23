@@ -35,7 +35,7 @@ export function Sidebar({
   return (
     <aside
       className={`fixed z-40 flex h-full w-[264px] flex-col border-r border-line bg-surface
-                  transition-transform md:static md:translate-x-0
+                  transition-transform md:static md:translate-x-0 print:hidden
                   ${open ? "translate-x-0 shadow-[0_0_0_100vw_rgba(0,0,0,0.35)] md:shadow-none" : "-translate-x-full"}`}
     >
       <div className="flex h-[58px] items-center gap-2.5 border-b border-line-soft px-4">

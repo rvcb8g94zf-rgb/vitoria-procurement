@@ -8,7 +8,7 @@ export const MODULES = [
   "installments", "accounts_payable", "payments", "suppliers", "products",
   "categories", "departments", "cost_centers", "companies", "users", "roles",
   "approval_flows", "documents", "reports", "audit", "settings",
-  "pending_registrations", "cost_allocations",
+  "pending_registrations", "cost_allocations", "dfe", "cash",
 ] as const;
 
 export const ACTIONS = [

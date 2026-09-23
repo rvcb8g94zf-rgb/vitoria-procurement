@@ -11,21 +11,30 @@ const RELATORIOS = [
     titulo: "Custo real por produto",
     nota: "Preço de nota contra custo cheio, com ICMS-ST e frete rateados. Disponível agora.",
     pronto: true,
+    permissao: null as string | null,
   },
-  { href: "#", titulo: "Compras por período", nota: "Depende dos pedidos da Fase 3.", pronto: false },
-  { href: "#", titulo: "Posição financeira", nota: "Depende das duplicatas da Fase 5.", pronto: false },
-  { href: "#", titulo: "Auditoria", nota: "Trilha completa de alterações.", pronto: false },
+  {
+    href: "/financeiro/caixa/relatorio",
+    titulo: "Fechamento de caixa",
+    nota: "Pedidos pagos por dia e por forma de pagamento, com impressão/PDF e CSV.",
+    pronto: true,
+    permissao: "cash.export",
+  },
+  { href: "#", titulo: "Compras por período", nota: "Depende dos pedidos da Fase 3.", pronto: false, permissao: null },
+  { href: "#", titulo: "Posição financeira", nota: "Depende das duplicatas da Fase 5.", pronto: false, permissao: null },
+  { href: "#", titulo: "Auditoria", nota: "Trilha completa de alterações.", pronto: false, permissao: null },
 ];
 
 export default async function RelatoriosPage() {
-  await requirePermission("reports");
+  const { permissions } = await requirePermission("reports");
+  const visiveis = RELATORIOS.filter((r) => !r.permissao || permissions.has(r.permissao));
 
   return (
     <div className="max-w-[820px] px-6 pb-14 pt-5">
       <PageHeader crumb="Gestão" title="Relatórios" />
 
       <div className="card divide-y divide-line-soft">
-        {RELATORIOS.map((r) =>
+        {visiveis.map((r) =>
           r.pronto ? (
             <Link key={r.titulo} href={r.href as any} className="flex items-center gap-3 px-4 py-3.5 hover:bg-raise">
               <div>

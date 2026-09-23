@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sincronizarEmpresa } from "@/lib/fiscal/sync";
@@ -7,10 +8,21 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
 
+/**
+ * O Vercel chama o cron com "Authorization: Bearer <CRON_SECRET>".
+ * Sem a variável configurada (ou curta demais) a rota recusa tudo —
+ * antes, "Bearer undefined" passava quando a variável não existia.
+ */
+function autorizado(header: string | null): boolean {
+  const secret = process.env.CRON_SECRET;
+  if (!secret || secret.length < 16 || !header) return false;
+  const recebido = Buffer.from(header);
+  const esperado = Buffer.from(`Bearer ${secret}`);
+  return recebido.length === esperado.length && timingSafeEqual(recebido, esperado);
+}
+
 export async function GET(request: NextRequest) {
-  // O Vercel envia CRON_SECRET; sem isso a rota fica pública.
-  const auth = request.headers.get("authorization");
-  if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!autorizado(request.headers.get("authorization"))) {
     return NextResponse.json({ erro: "não autorizado" }, { status: 401 });
   }
 

@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieList = { name: string; value: string; options?: CookieOptions }[];
 
-const PUBLIC_ROUTES = ["/login", "/recuperar-senha", "/nova-senha"];
+// Rotas que não exigem sessão. /api/cron tem a própria chave (CRON_SECRET).
+const PUBLIC_ROUTES = ["/login", "/recuperar-senha", "/nova-senha", "/api/cron"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
