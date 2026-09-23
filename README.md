@@ -9,7 +9,7 @@ Next.js 15 (App Router) + React 19 + TypeScript + Tailwind + Supabase (sa-east-1
 
 - O código vive no GitHub (branch `main`). Cada envio para o `main` gera um deploy
   automático no Vercel — não é preciso rodar nada localmente.
-- Banco: as migrações **0001 a 0015 já estão aplicadas** no projeto Supabase
+- Banco: as migrações **0001 a 0017 já estão aplicadas** no projeto Supabase
   `gkxglanbkeacilgqggqu`. Os arquivos em `supabase/migrations` são o registro exato do
   que está no banco; não precisam ser executados de novo.
 - O `middleware.ts` fica em **`src/middleware.ts`**. Com a pasta `src/`, o Next ignora um
@@ -40,7 +40,7 @@ do banco (sa-east-1) e corta a latência de cada consulta.
 | Notas fiscais | Consulta automática (DF-e) — prévia visual; o coletor roda pelo cron |
 | Financeiro | **Fechamento de caixa** (importar, consultar, relatório) |
 | Relatórios | Custo real por produto, fechamento de caixa |
-| Administração | Usuários, parâmetros |
+| Administração | Usuários (criar, perfil, senha, acesso), parâmetros |
 
 ## Fechamento de caixa
 
@@ -75,6 +75,33 @@ O desconto do caixa é informativo (não sai da gaveta). Um fechamento que não 
 - **Relatório:** indicadores, formas de pagamento, tipos, maquininhas, gráfico diário e
   tabela por dia com totais. Imprime em A4 paisagem (é também o "salvar em PDF") e
   exporta CSV que abre direto no Excel em português.
+
+## Usuários e acesso
+
+Tela: `/admin/usuarios` (precisa de `users.view`; criar e alterar exigem `users.create`
+e `users.edit`, que hoje só o perfil Administrador tem).
+
+- **Criar** pede nome, e-mail, perfil, empresas e uma **senha provisória** (o botão
+  "Gerar" sugere uma). A tela mostra o acesso uma única vez, para ser entregue à pessoa.
+- No **primeiro acesso** o sistema leva para `/trocar-senha` e não libera nada até a
+  pessoa criar a senha dela (`users.must_change_password`).
+- **E-mail que já existe** não vira conta nova: a pessoa ganha acesso à empresa atual,
+  sem mexer na senha dela.
+- **Perfil por empresa:** a mesma pessoa pode ser Financeiro numa empresa e
+  Visualização na outra.
+- **Desativar** tira o acesso àquela empresa sem apagar nada; o histórico continua.
+- **Redefinir senha** gera outra provisória e derruba a antiga na hora.
+- Guardas: ninguém altera o próprio perfil, o próprio acesso ou a própria senha por
+  essa tela (a sua senha troca em `/trocar-senha`), e só um superadministrador mexe em
+  outro superadministrador.
+
+A criação roda em `app.create_company_user` (migração 0016). É o banco que valida
+permissão, e-mail e força da senha, e só o hash bcrypt é gravado — nada de chave de
+serviço no navegador.
+
+**Quando houver e-mail (SMTP) configurado** no Supabase, dá para trocar a senha
+provisória por convite e ligar o "esqueci minha senha". Enquanto isso, quem cria o
+usuário entrega o acesso.
 
 ## Cron da consulta de NF-e (quando o plano for Pro)
 
@@ -115,6 +142,9 @@ mesma função das policies. Regra muda em um lugar só.
 **Nada se apaga de verdade.** Cadastros usam exclusão lógica; fechamentos de caixa são
 cancelados com motivo. Tudo passa pela auditoria (`app.audit()`).
 
+**O menu não leva a lugar nenhum vazio.** O que ainda não foi construído aparece
+marcado como "em breve", sem link (`soon` em `src/components/nav.ts`).
+
 **Funções expostas são finas.** A lógica fica no schema `app` (security definer); o
 PostgREST só enxerga wrappers em `public`, e `anon` não executa nada.
 
@@ -134,7 +164,9 @@ src/
         [id]/                   detalhe e cancelamento
         relatorio/              relatório imprimível + CSV
       relatorios/               índice de relatórios, custo real
-      admin/                    usuários, parâmetros
+      admin/usuarios/           lista, criação, perfil, senha e acesso
+      admin/parametros/         parâmetros da empresa
+    trocar-senha/               troca de senha (obrigatória no primeiro acesso)
     api/cron/dfe/               coletor de NF-e (cron)
   components/                   shell, menu, seletor de empresa, cabeçalho de página
   lib/
@@ -145,5 +177,5 @@ src/
     permissions.ts              espelho tipado do RBAC
     format.ts                   moeda, CNPJ e datas em pt-BR
   types/
-supabase/migrations/            0001–0015 (já aplicadas)
+supabase/migrations/            0001–0017 (já aplicadas)
 ```

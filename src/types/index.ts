@@ -12,6 +12,7 @@ export interface AppUser {
   avatar_path: string | null;
   status: UserStatus;
   is_superadmin: boolean;
+  must_change_password: boolean;
   last_seen_at: string | null;
 }
 

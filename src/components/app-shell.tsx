@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bell, Menu, Moon, Search, Sun } from "lucide-react";
 import { Sidebar } from "./sidebar";
 import { sair } from "@/app/actions";
@@ -76,6 +77,9 @@ export function AppShell({
             <span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-[11px] font-semibold text-surface">
               {initials(user.full_name)}
             </span>
+            <Link href="/trocar-senha" className="hidden text-[11.5px] text-muted hover:text-ink sm:block">
+              Trocar senha
+            </Link>
             <form action={sair}>
               <button className="text-[11.5px] text-muted hover:text-ink">Sair</button>
             </form>

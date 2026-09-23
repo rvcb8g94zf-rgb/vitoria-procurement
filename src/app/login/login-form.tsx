@@ -18,6 +18,15 @@ export function LoginForm({ proximo }: { proximo?: string }) {
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
+    if (!error) {
+      // registra o último acesso; se falhar, não atrapalha a entrada
+      try {
+        await supabase.rpc("touch_last_seen");
+      } catch {
+        /* segue o jogo */
+      }
+    }
+
     if (error) {
       // mensagem genérica de propósito: dizer "e-mail não existe"
       // entrega a terceiros quem tem conta no sistema

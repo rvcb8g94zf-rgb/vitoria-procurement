@@ -57,6 +57,23 @@ export function Sidebar({
               {g.title}
             </div>
             {g.items.map((item) => {
+              // tela ainda não construída: fica visível, mas não leva a lugar nenhum
+              if (item.soon) {
+                return (
+                  <div
+                    key={item.href}
+                    aria-disabled="true"
+                    className="flex cursor-default items-center gap-2.5 rounded-sm px-2.5 py-1.5 text-[13px] text-muted"
+                  >
+                    <Icon name={item.icon} className="h-4 w-4 shrink-0 opacity-60" />
+                    <span className="truncate">{item.label}</span>
+                    <span className="ml-auto shrink-0 rounded-full bg-line-soft px-1.5 py-0.5 text-[9.5px] font-medium text-muted">
+                      em breve
+                    </span>
+                  </div>
+                );
+              }
+
               const active = item.href === "/" ? path === "/" : path.startsWith(item.href);
               return (
                 <Link

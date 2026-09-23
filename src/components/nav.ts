@@ -4,7 +4,8 @@ export interface NavItem {
   label: string;
   href: string;
   module: Module;
-  icon: string; // nome do ícone em lucide-react
+  icon: string;   // nome do ícone em lucide-react
+  soon?: boolean; // tela ainda não construída: aparece no menu, sem link
 }
 
 export interface NavGroup {
@@ -24,31 +25,31 @@ export const NAV: NavGroup[] = [
   {
     title: "COMPRAS",
     items: [
-      { label: "Solicitações", href: "/compras/solicitacoes", module: "purchase_requests", icon: "FileText" },
-      { label: "Cotações", href: "/compras/cotacoes", module: "quotations", icon: "ListChecks" },
-      { label: "Pedidos de compra", href: "/compras/pedidos", module: "purchase_orders", icon: "ClipboardList" },
-      { label: "Aprovações", href: "/compras/aprovacoes", module: "approvals", icon: "CheckCheck" },
-      { label: "Recebimentos", href: "/compras/recebimentos", module: "goods_receipts", icon: "PackageCheck" },
+      { label: "Solicitações", href: "/compras/solicitacoes", module: "purchase_requests", icon: "FileText", soon: true },
+      { label: "Cotações", href: "/compras/cotacoes", module: "quotations", icon: "ListChecks", soon: true },
+      { label: "Pedidos de compra", href: "/compras/pedidos", module: "purchase_orders", icon: "ClipboardList", soon: true },
+      { label: "Aprovações", href: "/compras/aprovacoes", module: "approvals", icon: "CheckCheck", soon: true },
+      { label: "Recebimentos", href: "/compras/recebimentos", module: "goods_receipts", icon: "PackageCheck", soon: true },
     ],
   },
   {
     title: "NOTAS FISCAIS",
     items: [
-      { label: "Todas as notas", href: "/notas", module: "invoices", icon: "Receipt" },
+      { label: "Todas as notas", href: "/notas", module: "invoices", icon: "Receipt", soon: true },
       { label: "Consulta automática", href: "/notas/consulta", module: "invoices", icon: "RadioTower" },
-      { label: "Importar XML", href: "/notas/importar", module: "xml_import", icon: "Upload" },
-      { label: "Divergências", href: "/notas/divergencias", module: "divergences", icon: "TriangleAlert" },
-      { label: "Validar cadastros", href: "/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck" },
+      { label: "Importar XML", href: "/notas/importar", module: "xml_import", icon: "Upload", soon: true },
+      { label: "Divergências", href: "/notas/divergencias", module: "divergences", icon: "TriangleAlert", soon: true },
+      { label: "Validar cadastros", href: "/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck", soon: true },
     ],
   },
   {
     title: "FINANCEIRO",
     items: [
       { label: "Fechamento de caixa", href: "/financeiro/caixa", module: "cash", icon: "Banknote" },
-      { label: "Duplicatas", href: "/financeiro/duplicatas", module: "installments", icon: "CreditCard" },
-      { label: "Contas a pagar", href: "/financeiro/contas-a-pagar", module: "accounts_payable", icon: "Wallet" },
-      { label: "Pagamentos", href: "/financeiro/pagamentos", module: "payments", icon: "ArrowLeftRight" },
-      { label: "Calendário", href: "/financeiro/calendario", module: "accounts_payable", icon: "CalendarDays" },
+      { label: "Duplicatas", href: "/financeiro/duplicatas", module: "installments", icon: "CreditCard", soon: true },
+      { label: "Contas a pagar", href: "/financeiro/contas-a-pagar", module: "accounts_payable", icon: "Wallet", soon: true },
+      { label: "Pagamentos", href: "/financeiro/pagamentos", module: "payments", icon: "ArrowLeftRight", soon: true },
+      { label: "Calendário", href: "/financeiro/calendario", module: "accounts_payable", icon: "CalendarDays", soon: true },
     ],
   },
   {
@@ -65,8 +66,8 @@ export const NAV: NavGroup[] = [
     items: [
       { label: "Relatórios", href: "/relatorios", module: "reports", icon: "BarChart3" },
       { label: "Usuários", href: "/admin/usuarios", module: "users", icon: "UserCog" },
-      { label: "Perfis de acesso", href: "/admin/perfis", module: "roles", icon: "ShieldCheck" },
-      { label: "Auditoria", href: "/admin/auditoria", module: "audit", icon: "History" },
+      { label: "Perfis de acesso", href: "/admin/perfis", module: "roles", icon: "ShieldCheck", soon: true },
+      { label: "Auditoria", href: "/admin/auditoria", module: "audit", icon: "History", soon: true },
       { label: "Parâmetros", href: "/admin/parametros", module: "settings", icon: "Settings" },
     ],
   },
