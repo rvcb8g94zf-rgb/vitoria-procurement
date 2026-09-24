@@ -1,246 +1,222 @@
 import "server-only";
-import { createClient } from "@supabase/supabase-js";
-import { consultarDistribuicao, type Environment } from "./dfe-client";
-import { extrair, extrairEvento } from "./parser";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { consultarDistribuicao, ErroSefaz, type Environment } from "./dfe-client";
+import { abrirCertificado, ErroCertificado } from "./certificado";
 
 /**
- * Orquestração de uma execução do coletor para uma empresa.
+ * Uma execução do coletor para uma empresa.
  *
- * Regras que governam o fluxo:
- *  • cStat 137 = sem mais documentos. Consultar de novo em menos de 1h
- *    gera rejeição 656 e bloqueia o CNPJ. Gravamos blocked_until.
- *  • cStat 656 = já bloqueado. Recuar 1h e não insistir.
- *  • O cursor só avança depois que os documentos do lote foram gravados.
- *    Falha no meio significa reprocessar, nunca perder documento.
- *  • Resumo e XML completo da mesma chave são o mesmo registro.
+ * CAUTELA (decisão de 24/09/2026): a contabilidade também consulta a
+ * distribuição destes CNPJs. A SEFAZ conta as consultas por CNPJ, então:
+ *  • automático: no máximo uma vez a cada 12 h (o agendamento é diário);
+ *  • manual: só se a última consulta tiver mais de 1 h;
+ *  • cStat 137 (nada novo) ou ultNSU = maxNSU → espera 1 h (regra da SEFAZ);
+ *  • cStat 656 (consumo indevido) → para na hora e espera 65 min;
+ *  • o cursor (ultNSU) só avança depois que os documentos do lote foram
+ *    gravados — falha no meio é reprocessar, nunca perder documento;
+ *  • o sistema só LÊ: nenhuma manifestação é enviada daqui.
  */
+const CSTAT_LOTE = "138";
+const CSTAT_VAZIO = "137";
+const CSTAT_CONSUMO = "656";
 
-const CSTAT_LOTE = "138";       // documentos localizados
-const CSTAT_VAZIO = "137";      // nenhum documento
-const CSTAT_CONSUMO = "656";    // consumo indevido
+const INTERVALO_MANUAL_MIN = 60;
+const INTERVALO_AUTO_MIN = 12 * 60;
+const MAX_LOTES = 6;          // até ~300 documentos por execução
+const PRAZO_MS = 40_000;      // folga dentro dos 60 s da função
+const BUCKET_CERT = "fiscal-certs";
 
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
+export const nomeSegredo = (companyId: string) => `dfe_cert_${companyId.replace(/-/g, "")}`;
+export const caminhoCertificado = (companyId: string) => `${companyId}/a1.pfx`;
+
+export function admin(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const chave = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !chave) {
+    throw new Error("A chave de serviço do Supabase (SUPABASE_SERVICE_ROLE_KEY) não está configurada no servidor.");
+  }
+  return createClient(url, chave, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 export interface ResultadoSync {
-  status: "concluida" | "sem_novidade" | "bloqueada" | "erro" | "ignorada";
+  status: "concluida" | "sem_novidade" | "bloqueada" | "erro" | "ignorada" | "aguardando";
+  mensagem: string;
   cStat?: string;
-  mensagem?: string;
   novas?: number;
   enriquecidas?: number;
+  resumos?: number;
+  eventos?: number;
+  lotes?: number;
+  proximaEm?: string;
 }
+
+const agoraMais = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
+const hora = (iso: string) =>
+  new Intl.DateTimeFormat("pt-BR", { timeStyle: "short", dateStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
 
 export async function sincronizarEmpresa(
   companyId: string,
   gatilho: "cron" | "manual",
-  owner: string
+  opts: { endpoint?: string; prazoMs?: number } = {}
 ): Promise<ResultadoSync> {
   const db = admin();
 
   const { data: conn } = await db
     .from("fiscal_connections")
-    .select("*")
+    .select("environment, uf_code, cert_storage_path, cert_secret_name")
     .eq("company_id", companyId)
     .eq("is_active", true)
     .maybeSingle();
-
-  if (!conn) return { status: "ignorada", mensagem: "Sem conexão fiscal ativa." };
-
+  if (!conn?.cert_storage_path || !conn?.cert_secret_name) {
+    return { status: "ignorada", mensagem: "Nenhum certificado configurado para esta empresa." };
+  }
   const env = conn.environment as Environment;
 
+  // ---- cautela: intervalo mínimo e bloqueio da SEFAZ -------------------
+  const { data: estado } = await db
+    .from("dfe_sync_state")
+    .select("ult_nsu, last_run_at, blocked_until")
+    .eq("company_id", companyId).eq("environment", env)
+    .maybeSingle();
+
+  if (estado?.blocked_until && new Date(estado.blocked_until) > new Date()) {
+    return { status: "aguardando", mensagem: `A SEFAZ pede espera até ${hora(estado.blocked_until)}.`, proximaEm: estado.blocked_until };
+  }
+  if (estado?.last_run_at) {
+    const intervalo = gatilho === "manual" ? INTERVALO_MANUAL_MIN : INTERVALO_AUTO_MIN;
+    const libera = new Date(new Date(estado.last_run_at).getTime() + intervalo * 60_000);
+    if (libera > new Date()) {
+      return {
+        status: "aguardando",
+        mensagem: `A última consulta foi às ${hora(estado.last_run_at)}. Para não conflitar com a contabilidade, a próxima fica liberada às ${hora(libera.toISOString())}.`,
+        proximaEm: libera.toISOString(),
+      };
+    }
+  }
+
   const { data: travou } = await db.rpc("dfe_acquire_lock", {
-    _company_id: companyId, _env: env, _owner: owner,
+    _company_id: companyId, _env: env, _owner: `${gatilho}-${Date.now()}`,
   });
-  if (!travou) return { status: "ignorada", mensagem: "Outra execução em andamento ou CNPJ bloqueado." };
+  if (!travou) return { status: "ignorada", mensagem: "Já existe uma consulta em andamento para esta empresa." };
 
   const { data: run } = await db
     .from("dfe_sync_runs")
-    .insert({ company_id: companyId, environment: env, trigger: gatilho })
+    .insert({ company_id: companyId, environment: env, trigger: gatilho, from_nsu: Number(estado?.ult_nsu ?? 0) })
     .select("id")
     .single();
 
-  const encerrar = async (patch: Record<string, unknown>) => {
-    await db.from("dfe_sync_runs").update({ ...patch, finished_at: new Date().toISOString() }).eq("id", run!.id);
-    await db.rpc("dfe_release_lock", { _company_id: companyId, _env: env });
+  const tot = { docs: 0, novas: 0, enriquecidas: 0, resumos: 0, eventos: 0, lotes: 0 };
+  let ultNSU = String(estado?.ult_nsu ?? 0);
+
+  // last_run_at marca uma consulta feita à SEFAZ: é o que conta para o
+  // intervalo mínimo. Erro antes de chegar lá (senha, arquivo) não conta.
+  const gravarEstado = (patch: Record<string, unknown>, consultou = true) =>
+    db.from("dfe_sync_state")
+      .update(consultou ? { ...patch, last_run_at: new Date().toISOString() } : patch)
+      .eq("company_id", companyId).eq("environment", env);
+
+  const encerrar = async (status: string, cstat: string | null, mensagem: string) => {
+    if (run?.id) {
+      await db.from("dfe_sync_runs").update({
+        status, cstat, message: mensagem.slice(0, 500), finished_at: new Date().toISOString(),
+        docs_returned: Math.min(tot.docs, 32000), new_invoices: Math.min(tot.novas, 32000),
+        enriched: Math.min(tot.enriquecidas, 32000), to_nsu: Number(ultNSU),
+      }).eq("id", run.id);
+    }
   };
 
   try {
-    const { data: estado } = await db
-      .from("dfe_sync_state")
-      .select("ult_nsu")
-      .eq("company_id", companyId).eq("environment", env)
-      .maybeSingle();
-
-    const ultNSU = String(estado?.ult_nsu ?? 0);
-
-    const [pfx, senha] = await Promise.all([
-      baixarCertificado(db, conn.cert_storage_path),
-      lerSenha(db, conn.cert_secret_name),
+    // ---- certificado: arquivo privado + senha do cofre ----------------
+    const [{ data: arquivo, error: eArq }, { data: senha, error: eSenha }, { data: emp }] = await Promise.all([
+      db.storage.from(BUCKET_CERT).download(conn.cert_storage_path),
+      db.rpc("read_fiscal_secret", { _name: conn.cert_secret_name }),
+      db.from("companies").select("cnpj").eq("id", companyId).single(),
     ]);
+    if (eArq || !arquivo) throw new Error("Não foi possível ler o arquivo do certificado.");
+    if (eSenha || typeof senha !== "string") throw new Error("Não foi possível ler a senha do certificado.");
+    const cert = abrirCertificado(Buffer.from(await arquivo.arrayBuffer()), senha);
+    if (cert.validoAte < new Date()) throw new Error("O certificado A1 está vencido. Envie o novo na tela de consulta.");
+    const cnpj = String(emp?.cnpj ?? "").replace(/\D/g, "");
 
-    const r = await consultarDistribuicao({
-      environment: env,
-      cnpj: await cnpjDaEmpresa(db, companyId),
-      ufCode: conn.uf_code,
-      ultNSU,
-      pfx,
-      passphrase: senha,
-    });
+    const inicio = Date.now();
+    let status: ResultadoSync["status"] = "sem_novidade";
+    let cStat = "";
+    let mensagem = "";
 
-    if (r.cStat === CSTAT_CONSUMO) {
-      await db.from("dfe_sync_state").update({
-        last_cstat: r.cStat, last_message: r.xMotivo, last_run_at: new Date().toISOString(),
-        blocked_until: new Date(Date.now() + 65 * 60_000).toISOString(),
-      }).eq("company_id", companyId).eq("environment", env);
-      await encerrar({ status: "bloqueada", cstat: r.cStat, message: r.xMotivo });
-      return { status: "bloqueada", cStat: r.cStat, mensagem: r.xMotivo };
+    const prazo = opts.prazoMs ?? PRAZO_MS;
+    while (tot.lotes < MAX_LOTES && Date.now() - inicio < prazo) {
+      const r = await consultarDistribuicao({
+        environment: env, cnpj, ufCode: conn.uf_code ?? 35, ultNSU,
+        keyPem: cert.keyPem, certPem: cert.certPem, cadeiaPem: cert.cadeiaPem,
+        endpoint: opts.endpoint, timeoutMs: 15_000,
+      });
+      tot.lotes += 1;
+      cStat = r.cStat;
+      mensagem = r.xMotivo;
+
+      if (r.cStat === CSTAT_CONSUMO) {
+        await gravarEstado({ last_cstat: r.cStat, last_message: r.xMotivo, blocked_until: agoraMais(65) });
+        status = "bloqueada";
+        break;
+      }
+
+      if (r.cStat === CSTAT_VAZIO) {
+        await gravarEstado({
+          last_cstat: r.cStat, last_message: r.xMotivo, blocked_until: agoraMais(61),
+          ...(r.maxNSU ? { max_nsu: Number(r.maxNSU) } : {}),
+        });
+        status = tot.lotes > 1 ? "concluida" : "sem_novidade";
+        break;
+      }
+
+      if (r.cStat !== CSTAT_LOTE) {
+        await gravarEstado({ last_cstat: r.cStat, last_message: r.xMotivo });
+        status = "erro";
+        break;
+      }
+
+      // grava um por um; se algum falhar por rede, o cursor não anda
+      for (const doc of r.docs) {
+        const { data: res, error } = await db.rpc("dfe_ingest", {
+          _company_id: companyId, _env: env, _nsu: Number(doc.nsu), _schema: doc.schema, _xml: doc.xml,
+        });
+        if (error) throw new Error(`Falha ao gravar o documento NSU ${doc.nsu}.`);
+        tot.docs += 1;
+        const resultado = (res as { resultado?: string })?.resultado;
+        if (resultado === "nova") tot.novas += 1;
+        else if (resultado === "enriquecida") tot.enriquecidas += 1;
+        else if (resultado === "resumo") tot.resumos += 1;
+        else if (resultado === "evento") tot.eventos += 1;
+      }
+
+      ultNSU = r.ultNSU || ultNSU;
+      const acabou = !r.maxNSU || Number(r.ultNSU) >= Number(r.maxNSU);
+      await gravarEstado({
+        ult_nsu: Number(ultNSU), max_nsu: Number(r.maxNSU || ultNSU),
+        last_cstat: r.cStat, last_message: r.xMotivo,
+        // ultNSU = maxNSU: a SEFAZ não tem mais nada; nova consulta só em 1 h
+        blocked_until: acabou ? agoraMais(61) : null,
+      });
+      status = "concluida";
+      if (acabou) break;
     }
 
-    if (r.cStat === CSTAT_VAZIO) {
-      // Nova consulta dentro de 1h após 137 gera 656. Guardamos a espera.
-      await db.from("dfe_sync_state").update({
-        last_cstat: r.cStat, last_message: r.xMotivo, last_run_at: new Date().toISOString(),
-        blocked_until: new Date(Date.now() + 61 * 60_000).toISOString(),
-      }).eq("company_id", companyId).eq("environment", env);
-      await encerrar({ status: "sem_novidade", cstat: r.cStat, message: r.xMotivo, from_nsu: Number(ultNSU) });
-      return { status: "sem_novidade", cStat: r.cStat };
-    }
+    const resumo =
+      status === "bloqueada" ? `A SEFAZ bloqueou a consulta por 1 hora (${mensagem}). Provável consulta simultânea da contabilidade.`
+      : status === "erro" ? `A SEFAZ respondeu ${cStat}: ${mensagem}`
+      : status === "sem_novidade" ? "Nenhum documento novo na SEFAZ."
+      : `${tot.novas} ${tot.novas === 1 ? "nota nova" : "notas novas"}, ${tot.enriquecidas} ${tot.enriquecidas === 1 ? "completada" : "completadas"}, ` +
+        `${tot.resumos} ${tot.resumos === 1 ? "resumo" : "resumos"} e ${tot.eventos} ${tot.eventos === 1 ? "evento" : "eventos"}.`;
 
-    if (r.cStat !== CSTAT_LOTE) {
-      await encerrar({ status: "erro", cstat: r.cStat, message: r.xMotivo });
-      return { status: "erro", cStat: r.cStat, mensagem: r.xMotivo };
-    }
-
-    let novas = 0, enriquecidas = 0;
-    for (const doc of r.docs) {
-      const evento = doc.schema.toLowerCase().includes("evento");
-      if (evento) { await gravarEvento(db, companyId, env, doc); continue; }
-      const res = await gravarNota(db, companyId, env, doc);
-      if (res === "nova") novas += 1;
-      if (res === "enriquecida") enriquecidas += 1;
-    }
-
-    // Cursor avança só agora, com tudo persistido.
-    await db.from("dfe_sync_state").update({
-      ult_nsu: Number(r.ultNSU), max_nsu: Number(r.maxNSU),
-      last_cstat: r.cStat, last_message: r.xMotivo,
-      last_run_at: new Date().toISOString(), blocked_until: null,
-    }).eq("company_id", companyId).eq("environment", env);
-
-    await encerrar({
-      status: "concluida", cstat: r.cStat, message: r.xMotivo,
-      docs_returned: r.docs.length, new_invoices: novas, enriched: enriquecidas,
-      from_nsu: Number(ultNSU), to_nsu: Number(r.ultNSU),
-    });
-
-    return { status: "concluida", cStat: r.cStat, novas, enriquecidas };
+    await encerrar(status, cStat || null, resumo);
+    return { status, mensagem: resumo, cStat, ...tot };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Falha desconhecida";
-    await encerrar({ status: "erro", message: msg });
-    return { status: "erro", mensagem: msg };
+    const msg =
+      e instanceof ErroCertificado || e instanceof ErroSefaz || e instanceof Error ? e.message : "Falha desconhecida.";
+    await gravarEstado({ last_message: msg.slice(0, 300) }, e instanceof ErroSefaz || tot.lotes > 0);
+    await encerrar("erro", null, msg);
+    return { status: "erro", mensagem: msg, ...tot };
+  } finally {
+    await db.rpc("dfe_release_lock", { _company_id: companyId, _env: env });
   }
-}
-
-async function cnpjDaEmpresa(db: ReturnType<typeof admin>, companyId: string) {
-  const { data } = await db.from("companies").select("cnpj").eq("id", companyId).single();
-  return data!.cnpj as string;
-}
-
-async function baixarCertificado(db: ReturnType<typeof admin>, path: string | null) {
-  if (!path) throw new Error("Certificado não configurado.");
-  const { data, error } = await db.storage.from("fiscal").download(path);
-  if (error || !data) throw new Error("Não foi possível ler o certificado.");
-  return Buffer.from(await data.arrayBuffer());
-}
-
-async function lerSenha(db: ReturnType<typeof admin>, secretName: string | null) {
-  if (!secretName) throw new Error("Senha do certificado não configurada.");
-  const { data, error } = await db.rpc("read_fiscal_secret", { _name: secretName });
-  if (error || !data) throw new Error("Não foi possível ler a senha do certificado.");
-  return data as string;
-}
-
-async function gravarEvento(db: ReturnType<typeof admin>, companyId: string, env: string, doc: { nsu: string; xml: string }) {
-  const ev = extrairEvento(doc.xml);
-  if (!ev) return;
-
-  await db.from("fiscal_events").upsert({
-    company_id: companyId, environment: env, access_key: ev.accessKey,
-    event_type: ev.eventType, sequence: ev.sequence,
-    occurred_at: ev.occurredAt, nsu: Number(doc.nsu), description: ev.description,
-  }, { onConflict: "company_id,environment,access_key,event_type,sequence" });
-
-  // 110111 = cancelamento. Cancelada nunca volta para autorizada por
-  // evento atrasado, então só marcamos, nunca revertemos.
-  if (ev.eventType === "110111") {
-    await db.from("received_invoices")
-      .update({ fiscal_status: "cancelada", cancelled_at: ev.occurredAt })
-      .eq("company_id", companyId).eq("environment", env).eq("access_key", ev.accessKey);
-  }
-}
-
-async function gravarNota(
-  db: ReturnType<typeof admin>, companyId: string, env: string,
-  doc: { nsu: string; schema: string; xml: string }
-): Promise<"nova" | "enriquecida" | "ignorada"> {
-  const n = extrair(doc.xml, doc.schema);
-  if (!n) return "ignorada";
-
-  const { data: existente } = await db
-    .from("received_invoices")
-    .select("id, doc_kind, fiscal_status")
-    .eq("company_id", companyId).eq("environment", env).eq("access_key", n.accessKey)
-    .maybeSingle();
-
-  // resumo que chega depois do completo não rebaixa o registro
-  if (existente && existente.doc_kind === "completo" && n.kind === "resumo") return "ignorada";
-
-  const xmlPath = `${companyId}/dfe/${n.accessKey.slice(2, 6)}/${n.accessKey}.xml`;
-  if (n.kind === "completo") {
-    await db.storage.from("fiscal").upload(xmlPath, new Blob([doc.xml], { type: "application/xml" }), { upsert: true });
-  }
-
-  const registro = {
-    company_id: companyId, environment: env, access_key: n.accessKey,
-    nsu: Number(doc.nsu), doc_kind: n.kind,
-    emitter_cnpj: n.emitterCnpj ?? "", emitter_name: n.emitterName, emitter_ie: n.emitterIe,
-    number: n.number, series: n.series, issued_at: n.issuedAt,
-    total_amount: n.totalAmount, protocol: n.protocol, item_count: n.itemCount,
-    ...(n.kind === "completo" ? { xml_path: xmlPath, completed_at: new Date().toISOString() } : {}),
-  };
-
-  const { data: salvo } = await db
-    .from("received_invoices")
-    .upsert(registro, { onConflict: "company_id,environment,access_key" })
-    .select("id")
-    .single();
-
-  // Duplicatas só existem no XML completo. Reprocessar não duplica:
-  // a chave (invoice_id, seq) resolve por upsert.
-  if (n.duplicates && n.duplicates.length > 0 && salvo) {
-    await db.from("received_invoice_duplicates").upsert(
-      n.duplicates.map((d) => ({
-        company_id: companyId, invoice_id: salvo.id, seq: d.seq,
-        number: d.number, due_date: d.dueDate, amount: d.amount,
-      })),
-      { onConflict: "invoice_id,seq" }
-    );
-  }
-
-  // vincula ao fornecedor por CNPJ, nunca por semelhança de nome
-  if (n.emitterCnpj && salvo) {
-    const { data: forn } = await db
-      .from("suppliers").select("id")
-      .eq("company_id", companyId).eq("doc_number", n.emitterCnpj)
-      .maybeSingle();
-    if (forn) await db.from("received_invoices").update({ supplier_id: forn.id }).eq("id", salvo.id);
-  }
-
-  if (!existente) return "nova";
-  return existente.doc_kind === "resumo" && n.kind === "completo" ? "enriquecida" : "ignorada";
 }

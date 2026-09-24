@@ -35,9 +35,9 @@ export const NAV: NavGroup[] = [
   {
     title: "NOTAS FISCAIS",
     items: [
-      { label: "Todas as notas", href: "/notas", module: "invoices", icon: "Receipt", soon: true },
-      { label: "Consulta automática", href: "/notas/consulta", module: "invoices", icon: "RadioTower" },
-      { label: "Importar XML", href: "/notas/importar", module: "xml_import", icon: "Upload", soon: true },
+      { label: "Todas as notas", href: "/notas", module: "invoices", icon: "Receipt" },
+      { label: "Consulta SEFAZ", href: "/notas/consulta", module: "dfe", icon: "RadioTower" },
+      { label: "Importar XML", href: "/notas/importar", module: "xml_import", icon: "Upload" },
       { label: "Divergências", href: "/notas/divergencias", module: "divergences", icon: "TriangleAlert", soon: true },
       { label: "Validar cadastros", href: "/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck", soon: true },
     ],
@@ -46,10 +46,10 @@ export const NAV: NavGroup[] = [
     title: "FINANCEIRO",
     items: [
       { label: "Fechamento de caixa", href: "/financeiro/caixa", module: "cash", icon: "Banknote" },
-      { label: "Duplicatas", href: "/financeiro/duplicatas", module: "installments", icon: "CreditCard", soon: true },
-      { label: "Contas a pagar", href: "/financeiro/contas-a-pagar", module: "accounts_payable", icon: "Wallet", soon: true },
-      { label: "Pagamentos", href: "/financeiro/pagamentos", module: "payments", icon: "ArrowLeftRight", soon: true },
-      { label: "Calendário", href: "/financeiro/calendario", module: "accounts_payable", icon: "CalendarDays", soon: true },
+      { label: "Duplicatas", href: "/financeiro/duplicatas", module: "installments", icon: "CreditCard" },
+      { label: "Contas a pagar", href: "/financeiro/contas-a-pagar", module: "accounts_payable", icon: "Wallet" },
+      { label: "Pagamentos", href: "/financeiro/pagamentos", module: "payments", icon: "ArrowLeftRight" },
+      { label: "Calendário", href: "/financeiro/calendario", module: "accounts_payable", icon: "CalendarDays" },
     ],
   },
   {
