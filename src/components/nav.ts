@@ -20,7 +20,7 @@ export interface NavGroup {
 export const NAV: NavGroup[] = [
   {
     title: "GERAL",
-    items: [{ label: "Visão geral", href: "/", module: "dashboard", icon: "LayoutGrid" }],
+    items: [{ label: "Visão geral", href: "/interno", module: "dashboard", icon: "LayoutGrid" }],
   },
   {
     title: "COMPRAS",
@@ -35,40 +35,40 @@ export const NAV: NavGroup[] = [
   {
     title: "NOTAS FISCAIS",
     items: [
-      { label: "Todas as notas", href: "/notas", module: "invoices", icon: "Receipt" },
-      { label: "Consulta SEFAZ", href: "/notas/consulta", module: "dfe", icon: "RadioTower" },
-      { label: "Importar XML", href: "/notas/importar", module: "xml_import", icon: "Upload" },
-      { label: "Divergências", href: "/notas/divergencias", module: "divergences", icon: "TriangleAlert", soon: true },
-      { label: "Validar cadastros", href: "/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck", soon: true },
+      { label: "Todas as notas", href: "/interno/notas", module: "invoices", icon: "Receipt" },
+      { label: "Consulta SEFAZ", href: "/interno/notas/consulta", module: "dfe", icon: "RadioTower" },
+      { label: "Importar XML", href: "/interno/notas/importar", module: "xml_import", icon: "Upload" },
+      { label: "Divergências", href: "/interno/notas/divergencias", module: "divergences", icon: "TriangleAlert", soon: true },
+      { label: "Validar cadastros", href: "/interno/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck", soon: true },
     ],
   },
   {
     title: "FINANCEIRO",
     items: [
-      { label: "Fechamento de caixa", href: "/financeiro/caixa", module: "cash", icon: "Banknote" },
-      { label: "Duplicatas", href: "/financeiro/duplicatas", module: "installments", icon: "CreditCard" },
-      { label: "Contas a pagar", href: "/financeiro/contas-a-pagar", module: "accounts_payable", icon: "Wallet" },
-      { label: "Pagamentos", href: "/financeiro/pagamentos", module: "payments", icon: "ArrowLeftRight" },
-      { label: "Calendário", href: "/financeiro/calendario", module: "accounts_payable", icon: "CalendarDays" },
+      { label: "Fechamento de caixa", href: "/interno/financeiro/caixa", module: "cash", icon: "Banknote" },
+      { label: "Duplicatas", href: "/interno/financeiro/duplicatas", module: "installments", icon: "CreditCard" },
+      { label: "Contas a pagar", href: "/interno/financeiro/contas-a-pagar", module: "accounts_payable", icon: "Wallet" },
+      { label: "Pagamentos", href: "/interno/financeiro/pagamentos", module: "payments", icon: "ArrowLeftRight" },
+      { label: "Calendário", href: "/interno/financeiro/calendario", module: "accounts_payable", icon: "CalendarDays" },
     ],
   },
   {
     title: "CADASTROS",
     items: [
-      { label: "Fornecedores", href: "/cadastros/fornecedores", module: "suppliers", icon: "Users" },
-      { label: "Produtos", href: "/cadastros/produtos", module: "products", icon: "Boxes" },
-      { label: "Departamentos", href: "/cadastros/departamentos", module: "departments", icon: "Building2" },
-      { label: "Centros de custo", href: "/cadastros/centros-de-custo", module: "cost_centers", icon: "Landmark" },
+      { label: "Fornecedores", href: "/interno/cadastros/fornecedores", module: "suppliers", icon: "Users" },
+      { label: "Produtos", href: "/interno/cadastros/produtos", module: "products", icon: "Boxes" },
+      { label: "Departamentos", href: "/interno/cadastros/departamentos", module: "departments", icon: "Building2" },
+      { label: "Centros de custo", href: "/interno/cadastros/centros-de-custo", module: "cost_centers", icon: "Landmark" },
     ],
   },
   {
     title: "GESTÃO",
     items: [
-      { label: "Relatórios", href: "/relatorios", module: "reports", icon: "BarChart3" },
-      { label: "Usuários", href: "/admin/usuarios", module: "users", icon: "UserCog" },
-      { label: "Perfis de acesso", href: "/admin/perfis", module: "roles", icon: "ShieldCheck", soon: true },
-      { label: "Auditoria", href: "/admin/auditoria", module: "audit", icon: "History", soon: true },
-      { label: "Parâmetros", href: "/admin/parametros", module: "settings", icon: "Settings" },
+      { label: "Relatórios", href: "/interno/relatorios", module: "reports", icon: "BarChart3" },
+      { label: "Usuários", href: "/interno/admin/usuarios", module: "users", icon: "UserCog" },
+      { label: "Perfis de acesso", href: "/interno/admin/perfis", module: "roles", icon: "ShieldCheck", soon: true },
+      { label: "Auditoria", href: "/interno/admin/auditoria", module: "audit", icon: "History", soon: true },
+      { label: "Parâmetros", href: "/interno/admin/parametros", module: "settings", icon: "Settings" },
     ],
   },
 ];

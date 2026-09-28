@@ -25,7 +25,7 @@ export const getSession = cache(async (): Promise<Session> => {
   const supabase = await createClient();
 
   const { data: { user: authUser } } = await supabase.auth.getUser();
-  if (!authUser) redirect("/login");
+  if (!authUser) redirect("/interno/login");
 
   const { data: profile } = await supabase
     .from("users")
@@ -33,8 +33,8 @@ export const getSession = cache(async (): Promise<Session> => {
     .eq("id", authUser.id)
     .single<AppUser>();
 
-  if (!profile) redirect("/login");
-  if (profile.status !== "ativo") redirect("/sem-empresa");
+  if (!profile) redirect("/interno/login");
+  if (profile.status !== "ativo") redirect("/interno/sem-empresa");
 
   const { data: rows } = await supabase
     .from("user_companies")
@@ -55,7 +55,7 @@ export const getSession = cache(async (): Promise<Session> => {
       )
     );
 
-  if (memberships.length === 0) redirect("/sem-empresa");
+  if (memberships.length === 0) redirect("/interno/sem-empresa");
 
   const store = await cookies();
   const wanted = store.get(COMPANY_COOKIE)?.value;
@@ -84,6 +84,6 @@ export const getSession = cache(async (): Promise<Session> => {
  */
 export async function requirePermission(module: string, action = "view") {
   const session = await getSession();
-  if (!session.permissions.has(`${module}.${action}`)) redirect("/sem-permissao");
+  if (!session.permissions.has(`${module}.${action}`)) redirect("/interno/sem-permissao");
   return session;
 }

@@ -1,0 +1,140 @@
+/* Site público (depositovitoriasa.com.br). Tudo escopado em .dv para não
+   vazar para o sistema em /interno. */
+.dv{
+  --white:#FFFFFF; --ice:#F7F9FB; --navy:#1E2A4A; --deep:#151F3A;
+  --gray-l:#B8BEC9; --gray-d:#4A5262; --ink:#151F3A; --line:#E4E8EE;
+  --gold:#E3A72F; --r:12px;
+  --shadow:0 1px 2px rgba(21,31,58,.06),0 8px 24px -12px rgba(21,31,58,.18);
+  --shadow-up:0 2px 4px rgba(21,31,58,.08),0 18px 36px -14px rgba(21,31,58,.28);
+}
+.dv, .dv *{box-sizing:border-box;margin:0;padding:0}
+html:has(.dv){scroll-behavior:smooth;scroll-padding-top:80px}
+.dv{background:var(--white);color:var(--gray-d);font:400 16px/1.6 "Figtree",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+.dv img{display:block;max-width:100%}
+.dv a{color:inherit;text-decoration:none}
+.dv h1,.dv h2,.dv h3{font-family:"Archivo",system-ui,sans-serif;color:var(--ink);letter-spacing:-.025em;line-height:1.08}
+.dv .wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.dv svg.i{width:1em;height:1em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dv .topbar{background:var(--deep);color:#C9CED8;font-size:13px}
+.dv .topbar .wrap{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:38px}
+.dv .topbar a{display:inline-flex;align-items:center;gap:6px;color:#fff;font-weight:500}
+.dv .topbar a:hover{text-decoration:underline}
+@media(max-width:640px){
+.dv .topbar .hide-sm{display:none}
+.dv .topbar .wrap{justify-content:center}
+}
+.dv header{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.dv header .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;height:72px}
+.dv .brand{display:flex;align-items:center;gap:12px}
+.dv .brand img{width:44px;height:44px;border-radius:10px}
+.dv .brand b{display:block;font:800 18px/1.1 "Archivo",sans-serif;color:var(--ink);letter-spacing:-.02em}
+.dv .brand small{display:block;font-size:10.5px;font-weight:600;letter-spacing:.14em;color:var(--gray-d);margin-top:3px}
+.dv nav{display:flex;gap:28px;font-weight:600;font-size:15px;color:var(--gray-d)}
+.dv nav a{position:relative;padding:6px 0;transition:color .2s}
+.dv nav a::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--navy);transform:scaleX(0);transition:transform .2s}
+.dv nav a:hover{color:var(--ink)}
+.dv nav a:hover::after{transform:scaleX(1)}
+.dv .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;font:700 15px/1 "Figtree",sans-serif;border-radius:var(--r);padding:14px 22px;transition:transform .2s,background .2s,color .2s,box-shadow .2s,border-color .2s;white-space:nowrap}
+.dv .btn:hover{transform:translateY(-2px)}
+.dv .btn-navy{background:var(--navy);color:#fff;box-shadow:var(--shadow)}
+.dv .btn-navy:hover{background:var(--deep);box-shadow:var(--shadow-up)}
+.dv .btn-sm{padding:11px 16px;font-size:14px}
+.dv .btn-white{background:#fff;color:var(--ink);box-shadow:0 10px 30px -12px rgba(0,0,0,.5)}
+.dv .btn-white:hover{background:var(--ice)}
+.dv .btn-ghost{border:1.5px solid rgba(255,255,255,.55);color:#fff}
+.dv .btn-ghost:hover{background:rgba(255,255,255,.1);border-color:#fff}
+@media(max-width:860px){
+.dv nav{display:none}
+}
+@media(max-width:420px){
+.dv header .btn-sm{display:none}
+}
+.dv .hero{position:relative;background:var(--deep);color:#fff;overflow:hidden}
+.dv .hero .bg{position:absolute;inset:0;background:url("/site/hero.jpg") center/cover;opacity:.4}
+.dv .hero::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(21,31,58,.92) 0%,rgba(21,31,58,.55) 60%,rgba(21,31,58,.25) 100%)}
+.dv .hero .wrap{position:relative;z-index:1;padding-top:88px;padding-bottom:96px}
+.dv .badge{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;letter-spacing:.02em;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff}
+.dv .badge svg{font-size:16px}
+.dv .hero h1{color:#fff;font-size:clamp(36px,6.2vw,64px);font-weight:900;max-width:760px;margin:22px 0 20px}
+.dv .hero p{font-size:clamp(16px,2vw,19px);color:#D9DDE5;max-width:600px}
+.dv .hero .ctas{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px}
+.dv .soon{display:inline-flex;align-items:center;gap:8px;margin-top:28px;font-size:13px;color:#C9CED8}
+.dv .soon span{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;background:rgba(255,255,255,.08);border:1px dashed rgba(255,255,255,.3);font-weight:600;color:#fff}
+@media(max-width:520px){
+.dv .hero .ctas .btn{width:100%}
+}
+.dv .numbers{background:var(--ice);border-bottom:1px solid var(--line)}
+.dv .numbers .wrap{display:grid;grid-template-columns:repeat(3,1fr)}
+.dv .num{padding:34px 16px;text-align:center}
+.dv .num+.num{border-left:1px solid var(--line)}
+.dv .num b{display:block;font:900 clamp(34px,5vw,48px)/1 "Archivo",sans-serif;color:var(--navy);letter-spacing:-.03em}
+.dv .num span{display:block;margin-top:8px;font-size:14px;font-weight:500}
+@media(max-width:560px){
+.dv .num{padding:24px 6px}
+.dv .num span{font-size:12.5px}
+}
+.dv section.s{padding:96px 0}
+.dv .eyebrow{font:700 12.5px/1 "Figtree",sans-serif;letter-spacing:.18em;color:var(--navy);display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.dv .eyebrow::before{content:"";width:28px;height:2px;background:var(--navy)}
+.dv h2{font-size:clamp(28px,4vw,42px);font-weight:800}
+.dv .lead{font-size:17px;margin-top:16px;max-width:620px}
+@media(max-width:640px){
+.dv section.s{padding:68px 0}
+}
+.dv .about{display:grid;grid-template-columns:1.05fr .95fr;gap:64px;align-items:center}
+.dv .about p{margin-top:18px;font-size:16.5px}
+.dv .about p strong{color:var(--ink)}
+.dv .checks{list-style:none;margin-top:26px;display:grid;gap:12px}
+.dv .checks li{display:flex;gap:12px;align-items:flex-start;color:var(--ink);font-weight:500}
+.dv .checks .ck{width:24px;height:24px;border-radius:7px;background:var(--navy);color:#fff;display:grid;place-items:center;flex:none;font-size:14px;margin-top:1px}
+.dv .photo{position:relative}
+.dv .photo img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:20px;box-shadow:var(--shadow-up)}
+.dv .float{position:absolute;left:-22px;bottom:28px;background:var(--navy);color:#fff;border-radius:var(--r);padding:18px 22px;box-shadow:var(--shadow-up)}
+.dv .float b{display:block;font:900 40px/1 "Archivo",sans-serif;letter-spacing:-.03em}
+.dv .float span{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;margin-top:6px;color:#C9CED8}
+@media(max-width:900px){
+.dv .about{grid-template-columns:1fr;gap:44px}
+.dv .float{left:14px;bottom:14px}
+}
+.dv .products{background:var(--ice)}
+.dv .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:44px}
+.dv .card{background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);transition:transform .2s,box-shadow .2s,border-color .2s}
+.dv .card:hover{transform:translateY(-4px);box-shadow:var(--shadow-up);border-color:var(--gray-l)}
+.dv .cat{padding:26px 22px}
+.dv .cat .ic{width:48px;height:48px;border-radius:11px;background:var(--ice);border:1px solid var(--line);display:grid;place-items:center;color:var(--navy);font-size:24px;transition:background .2s,color .2s}
+.dv .cat:hover .ic{background:var(--navy);color:#fff;border-color:var(--navy)}
+.dv .cat h3{font-size:17px;font-weight:700;margin-top:18px;letter-spacing:-.01em}
+@media(max-width:900px){
+.dv .grid4{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:380px){
+.dv .cat{padding:20px 16px}
+.dv .cat h3{font-size:15.5px}
+}
+.dv .reviews{background-color:#fff;background-image:repeating-linear-gradient(135deg,rgba(30,42,74,.035) 0 1px,transparent 1px 22px)}
+.dv .rev-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;flex-wrap:wrap}
+.dv .revs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin-top:44px;align-items:start}
+.dv .rev{padding:22px}
+.dv .stars{display:flex;gap:2px;color:var(--gold)}
+.dv .stars svg{fill:var(--gold);stroke:var(--gold);font-size:16px}
+.dv .rev .q{color:var(--gray-l);font-size:26px;margin:14px 0 6px}
+.dv .rev p{color:var(--ink);font-size:15px;line-height:1.6}
+.dv .rev footer{margin-top:18px;padding-top:14px;border-top:1px solid var(--line)}
+.dv .rev footer b{display:block;color:var(--ink);font-size:14.5px}
+.dv .rev footer span{display:block;font-size:12.5px;margin-top:2px}
+.dv .insta{background:var(--navy);color:#fff;text-align:center;padding:72px 0}
+.dv .insta .ig{width:56px;height:56px;border-radius:16px;margin:0 auto 20px;display:grid;place-items:center;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);font-size:28px}
+.dv .insta h2{color:#fff;max-width:620px;margin:0 auto 28px}
+.dv .foot{padding:64px 0 0;border-top:1px solid var(--line)}
+.dv .cols{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:40px;padding-bottom:48px}
+.dv .foot h4{font:700 12.5px/1 "Figtree",sans-serif;letter-spacing:.16em;color:var(--ink);margin-bottom:16px}
+.dv .foot p{font-size:15px}
+.dv .foot .brand{margin-bottom:16px}
+.dv .foot .lk{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:var(--ink);font-weight:500;padding:4px 0}
+.dv .foot .lk svg{margin-top:4px;color:var(--navy)}
+.dv .foot .lk:hover{color:var(--navy);text-decoration:underline}
+.dv .foot .note{font-size:13px;margin-top:6px;padding-left:26px}
+.dv .bottom{border-top:1px solid var(--line);padding:20px 0;font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:760px){
+.dv .cols{grid-template-columns:1fr;gap:32px}
+}

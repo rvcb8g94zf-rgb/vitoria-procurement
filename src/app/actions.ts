@@ -29,7 +29,7 @@ export async function trocarEmpresa(companyId: string) {
     path: "/",
   });
 
-  revalidatePath("/", "layout");
+  revalidatePath("/interno", "layout");
 }
 
 export async function sair() {
@@ -37,5 +37,5 @@ export async function sair() {
   await supabase.auth.signOut();
   const store = await cookies();
   store.delete(COMPANY_COOKIE);
-  redirect("/login");
+  redirect("/interno/login");
 }

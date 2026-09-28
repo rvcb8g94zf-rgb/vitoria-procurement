@@ -57,7 +57,7 @@ export function Sidebar({
   // /notas/importar fica marcado "Importar XML", e não "Todas as notas".
   const ativo = groups
     .flatMap((g) => g.items)
-    .filter((i) => !i.soon && (i.href === "/" ? path === "/" : path === i.href || path.startsWith(i.href + "/")))
+    .filter((i) => !i.soon && (i.href === "/interno" ? path === "/interno" : path === i.href || path.startsWith(i.href + "/")))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
   const grupoAtivo = groups.find((g) => g.items.some((i) => i.href === ativo))?.title;
 

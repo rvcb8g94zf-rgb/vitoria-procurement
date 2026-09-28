@@ -5,6 +5,16 @@ Sistema interno de compras, documentos fiscais e financeiro do grupo
 
 Next.js 15 (App Router) + React 19 + TypeScript + Tailwind + Supabase (sa-east-1) + Vercel.
 
+## Endereços
+
+- `https://www.depositovitoriasa.com.br/` — site público da loja (página única, sem login).
+- `https://www.depositovitoriasa.com.br/interno` — o sistema. Todas as telas ficam embaixo de
+  `/interno` (ex.: `/interno/notas`). O site não tem link para cá: o funcionário digita o endereço.
+- Endereços antigos (`/login`, `/notas/...`, `/financeiro/...` etc.) redirecionam para `/interno/...`
+  (`next.config.ts`), para favoritos salvos continuarem funcionando.
+- O middleware só olha a sessão dentro de `/interno`; o site e `/api/cron` não passam por ele.
+- `/interno` tem `noindex`: não aparece no Google.
+
 ## Como publicar
 
 - O código vive no GitHub (branch `main`). Cada envio para o `main` gera um deploy
@@ -79,7 +89,7 @@ O desconto do caixa é informativo (não sai da gaveta). Um fechamento que não 
 
 ## Notas fiscais (XML)
 
-Rotas: `/notas` (lista com filtros), `/notas/importar` e `/notas/[id]` (detalhe).
+Rotas: `/interno/notas` (lista com filtros), `/interno/notas/importar` e `/interno/notas/[id]` (detalhe).
 
 **O banco lê o XML.** A tela manda o arquivo inteiro; `app.parse_nfe` tira os
 namespaces, recusa DOCTYPE/ENTITY e arquivos acima de 2 MB, e lê chave, emitente,
@@ -159,7 +169,7 @@ usuário entrega o acesso.
 
 ## Consulta na SEFAZ (DF-e)
 
-Rota: `/notas/consulta`. Agendamento: `/api/cron/dfe`, uma vez por dia às 06:00 (09:00 UTC, `vercel.json`).
+Rota: `/interno/notas/consulta`. Agendamento: `/api/cron/dfe`, uma vez por dia às 06:00 (09:00 UTC, `vercel.json`).
 
 **Convivência com a contabilidade (decisão de 24/09/2026).** A contabilidade também consulta
 a distribuição destes CNPJs e a SEFAZ conta as consultas por CNPJ (rejeição 656, bloqueio de
@@ -234,10 +244,13 @@ dele o caminho é `/dup/nDup`, não `./nDup` (migração 0019).
 
 ```
 src/
-  middleware.ts               renova a sessão e barra rota fechada sem login
+  middleware.ts               renova a sessão e barra /interno sem login
   app/
-    login/                      autenticação
-    (app)/                      rotas autenticadas (layout com menu)
+    (site)/                     site público em "/" (page.tsx + site.css, tudo escopado em .dv)
+    icon.png                    favicon
+    interno/                    o sistema (noindex)
+    interno/login/              autenticação
+    interno/(app)/              rotas autenticadas (layout com menu)
       cadastros/                departamentos, centros de custo, fornecedores, produtos
       notas/                    notas recebidas (lista) e [id]/ (detalhe)
         importar/               envio de XML com prévia
@@ -254,7 +267,7 @@ src/
       relatorios/               índice de relatórios, custo real
       admin/usuarios/           lista, criação, perfil, senha e acesso
       admin/parametros/         parâmetros da empresa
-    trocar-senha/               troca de senha (obrigatória no primeiro acesso)
+    interno/trocar-senha/       troca de senha (obrigatória no primeiro acesso)
     api/cron/dfe/               coletor de NF-e (cron)
   components/                   shell, menu, seletor de empresa, cabeçalho, painéis, janela (modal)
   lib/
@@ -267,5 +280,6 @@ src/
     permissions.ts              espelho tipado do RBAC
     format.ts                   moeda, CNPJ e datas em pt-BR
   types/
+public/site/                    fotos e logo do site
 supabase/migrations/            0001–0022 (já aplicadas)
 ```

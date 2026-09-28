@@ -3,10 +3,16 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieList = { name: string; value: string; options?: CookieOptions }[];
 
-// Rotas que não exigem sessão. /api/cron tem a própria chave (CRON_SECRET).
-const PUBLIC_ROUTES = ["/login", "/recuperar-senha", "/nova-senha", "/api/cron"];
+// O sistema mora em /interno. Tudo fora dele é o site público (e /api/cron,
+// que tem a própria chave, CRON_SECRET) — não passa pela sessão.
+const AREA = "/interno";
+// Dentro de /interno, rotas que não exigem sessão.
+const PUBLIC_ROUTES = ["/interno/login", "/interno/recuperar-senha", "/interno/nova-senha"];
 
 export async function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  if (path !== AREA && !path.startsWith(AREA + "/")) return NextResponse.next({ request });
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -30,19 +36,18 @@ export async function updateSession(request: NextRequest) {
   // o cookie e aceitaria um JWT forjado — não trocar por ele.
   const { data: { user } } = await supabase.auth.getUser();
 
-  const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_ROUTES.some((r) => path.startsWith(r));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    url.pathname = "/interno/login";
     url.searchParams.set("proximo", path);
     return NextResponse.redirect(url);
   }
 
-  if (user && path === "/login") {
+  if (user && path === "/interno/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/";
+    url.pathname = AREA;
     url.search = "";
     return NextResponse.redirect(url);
   }

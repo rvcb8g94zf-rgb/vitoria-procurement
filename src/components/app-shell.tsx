@@ -77,7 +77,7 @@ export function AppShell({
             <span className="grid h-7 w-7 place-items-center rounded-full bg-ink text-[11px] font-semibold text-surface">
               {initials(user.full_name)}
             </span>
-            <Link href="/trocar-senha" className="hidden text-[11.5px] text-muted hover:text-ink sm:block">
+            <Link href="/interno/trocar-senha" className="hidden text-[11.5px] text-muted hover:text-ink sm:block">
               Trocar senha
             </Link>
             <form action={sair}>
