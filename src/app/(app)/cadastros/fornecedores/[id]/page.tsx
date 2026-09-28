@@ -4,7 +4,9 @@ import { PageHeader } from "@/components/page-header";
 import { requirePermission } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { cnpj as fmtDoc, date, money } from "@/lib/format";
+import { Hourglass } from "lucide-react";
 import { FornecedorDialog } from "../dialog";
+import { RevisarFornecedor } from "../revisar";
 import type { PaymentTerm, Supplier } from "@/types";
 
 export default async function FornecedorPage({
@@ -54,6 +56,29 @@ export default async function FornecedorPage({
           ? <FornecedorDialog fornecedor={f as Supplier} condicoes={(condicoes ?? []) as PaymentTerm[]} />
           : undefined}
       />
+
+      {f.status === "pendente" && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded bg-warn-soft px-3.5 py-3 text-[12.5px] text-warn">
+          <Hourglass className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+          <p className="min-w-0 flex-1">
+            <b>Aguardando aprovação.</b> Este fornecedor foi cadastrado automaticamente a partir de uma nota fiscal.
+            Confira os dados (use <b>Editar</b> para completar condição de pagamento, contato etc.) e aprove.
+          </p>
+          {permissions.has("suppliers.edit") && (
+            <RevisarFornecedor id={f.id} nome={f.trade_name ?? f.legal_name} />
+          )}
+        </div>
+      )}
+      {f.status === "bloqueado" && (
+        <div className="mb-4 rounded bg-danger-soft px-3.5 py-3 text-[12.5px] text-danger">
+          <b>Fornecedor bloqueado.</b> O motivo está nas observações abaixo.
+        </div>
+      )}
+      {f.notes && (
+        <p className="mb-4 whitespace-pre-line rounded border border-line bg-surface px-3.5 py-2.5 text-[12px] text-graphite">
+          {f.notes}
+        </p>
+      )}
 
       <div className="mb-4 grid grid-cols-2 gap-px overflow-hidden rounded border border-line bg-line lg:grid-cols-4">
         {[

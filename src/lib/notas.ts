@@ -19,6 +19,7 @@ export interface InvoiceRow {
   duplicates_count: number;
   next_due: string | null;
   created_at: string;
+  supplier_status: "ativo" | "inativo" | "bloqueado" | "pendente" | null;
 }
 
 export interface InvoiceItemPreview {
@@ -91,6 +92,7 @@ export function normalizeInvoices(data: unknown): InvoiceRow[] {
     duplicates_count: Number(r.duplicates_count ?? 0),
     next_due: r.next_due ?? null,
     created_at: r.created_at,
+    supplier_status: r.supplier_status ?? null,
   }));
 }
 
@@ -158,7 +160,8 @@ export function summarizeInvoices(rows: InvoiceRow[], hoje: string): InvoiceSumm
   return {
     count: rows.length,
     total: Math.round(validas.reduce((s, r) => s + r.total_amount, 0) * 100) / 100,
-    semFornecedor: rows.filter((r) => !r.supplier_id).length,
+    // sem cadastro ou com cadastro ainda aguardando aprovação
+    semFornecedor: rows.filter((r) => !r.supplier_id || r.supplier_status === "pendente").length,
     resumos: rows.filter((r) => r.doc_kind === "resumo").length,
     canceladas: rows.filter((r) => r.fiscal_status === "cancelada").length,
     aVencer: validas.filter((r) => r.next_due && r.next_due <= limite).length,

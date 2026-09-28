@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ChevronRight, Upload } from "lucide-react";
+import { AlertTriangle, ChevronRight, Hourglass, Upload } from "lucide-react";
 import { PageHeader, EmptyState } from "@/components/page-header";
 import { KpiRow } from "@/components/panels";
 import { requirePermission } from "@/lib/session";
@@ -93,7 +93,7 @@ export default async function NotasPage({
               { label: "Notas", value: String(resumo.count) },
               { label: "Vencendo em 7 dias", value: String(resumo.aVencer), note: "duplicatas da nota" },
               ...(resumo.semFornecedor > 0
-                ? [{ label: "Sem fornecedor", value: String(resumo.semFornecedor), note: "aguardando cadastro", tone: "warn" as const }]
+                ? [{ label: "Fornecedor a aprovar", value: String(resumo.semFornecedor), note: "ver em Fornecedores", tone: "warn" as const }]
                 : []),
               ...(resumo.resumos > 0
                 ? [{ label: "Só resumo", value: String(resumo.resumos), note: "falta o XML completo" }]
@@ -140,11 +140,20 @@ export default async function NotasPage({
                           </div>
                           <div className="text-[11px] text-muted">
                             <span className="font-mono">{cnpj(r.emitter_cnpj)}</span>
-                            {!r.supplier_id && (
+                            {!r.supplier_id ? (
                               <span className="ml-1.5 inline-flex items-center gap-1 text-warn">
                                 <AlertTriangle className="h-3 w-3" /> fornecedor não cadastrado
                               </span>
-                            )}
+                            ) : r.supplier_status === "pendente" ? (
+                              <Link href={`/cadastros/fornecedores/${r.supplier_id}`}
+                                    className="ml-1.5 inline-flex items-center gap-1 text-warn hover:underline">
+                                <Hourglass className="h-3 w-3" /> fornecedor aguardando aprovação
+                              </Link>
+                            ) : r.supplier_status === "bloqueado" ? (
+                              <span className="ml-1.5 inline-flex items-center gap-1 text-danger">
+                                <AlertTriangle className="h-3 w-3" /> fornecedor bloqueado
+                              </span>
+                            ) : null}
                           </div>
                         </div>
                       </td>

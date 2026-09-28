@@ -9,7 +9,7 @@ Next.js 15 (App Router) + React 19 + TypeScript + Tailwind + Supabase (sa-east-1
 
 - O código vive no GitHub (branch `main`). Cada envio para o `main` gera um deploy
   automático no Vercel — não é preciso rodar nada localmente.
-- Banco: as migrações **0001 a 0021 já estão aplicadas** no projeto Supabase
+- Banco: as migrações **0001 a 0022 já estão aplicadas** no projeto Supabase
   `gkxglanbkeacilgqggqu`. Os arquivos em `supabase/migrations` são o registro exato do
   que está no banco; não precisam ser executados de novo.
 - O `middleware.ts` fica em **`src/middleware.ts`**. Com a pasta `src/`, o Next ignora um
@@ -89,7 +89,15 @@ sem gravar; o registro (`register_invoice_xml`) grava, um arquivo de cada vez.
 - **Duplicidade:** a chave de acesso é a identidade. O mesmo XML de novo aparece como
   "já importada". Um resumo (resNFe) é completado quando chega o XML inteiro.
 - **Cadastro:** o emitente é ligado ao fornecedor pelo CNPJ; o item, pelo código do
-  fornecedor ou EAN. O que não casa vira pendência de cadastro — a nota entra do mesmo jeito.
+  fornecedor ou EAN. Item que não casa vira pendência de cadastro — a nota entra do mesmo jeito.
+- **Fornecedor novo (migração 0022):** emitente que não está no cadastro vira fornecedor com
+  status **pendente** ("aguardando aprovação"), já ligado à nota — vale para XML importado e
+  para a SEFAZ. Os dados vêm do XML (razão social, fantasia, IE, endereço, telefone). Quando a
+  SEFAZ entrega primeiro o resumo, o fornecedor nasce só com CNPJ e nome e os campos vazios
+  são preenchidos quando o XML completo chega (nada digitado à mão é sobrescrito).
+  **Aprovar** (vira ativo) ou **Rejeitar** (vira bloqueado, com motivo) fica em Cadastros →
+  Fornecedores, para quem tem `suppliers.edit`. CNPJ/CPF inválido ou da própria empresa não
+  vira fornecedor: segue como pendência.
 - **Custo cheio por item** = produto − desconto + frete + seguro + outras + ICMS-ST + IPI,
   dividido pela quantidade. Vai para o histórico de preços do produto.
 - **Permissões:** `xml_import.import` importa; `invoices.view` consulta; o XML original
@@ -259,5 +267,5 @@ src/
     permissions.ts              espelho tipado do RBAC
     format.ts                   moeda, CNPJ e datas em pt-BR
   types/
-supabase/migrations/            0001–0021 (já aplicadas)
+supabase/migrations/            0001–0022 (já aplicadas)
 ```

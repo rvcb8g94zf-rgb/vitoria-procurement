@@ -2,7 +2,7 @@ import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { AlertTriangle, Ban, FileText, Package } from "lucide-react";
+import { AlertTriangle, Ban, FileText, Hourglass, Package } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Card, KpiRow } from "@/components/panels";
 import { requirePermission } from "@/lib/session";
@@ -24,7 +24,7 @@ const carregar = cache(async (id: string) => {
       emitter_ie, emitter_uf, dest_cnpj, total_amount, products_total, discount_total, freight_total,
       insurance_total, other_total, icms_st_total, ipi_total, item_count, doc_kind, fiscal_status,
       protocol, source, source_filename, xml_content, created_at, supplier_id, manifestation, nsu,
-      supplier:suppliers(id, legal_name, trade_name),
+      supplier:suppliers(id, legal_name, trade_name, status),
       importer:users!received_invoices_imported_by_fkey(full_name),
       items:received_invoice_items(*),
       duplicates:received_invoice_duplicates(seq, number, due_date, amount)
@@ -51,7 +51,7 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
   const nota = await carregar(id);
   if (!nota) notFound();
 
-  const fornecedor = um<{ id: string; legal_name: string; trade_name: string | null }>(nota.supplier);
+  const fornecedor = um<{ id: string; legal_name: string; trade_name: string | null; status: string }>(nota.supplier);
   const importador = um<{ full_name: string }>(nota.importer);
   const itens = ((nota.items ?? []) as any[]).sort((a, b) => Number(a.seq) - Number(b.seq));
   const duplicatas = ((nota.duplicates ?? []) as any[]).sort((a, b) => Number(a.seq) - Number(b.seq));
@@ -88,6 +88,28 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
           <p>
             <b>Só o resumo da SEFAZ.</b> Itens e parcelas chegam com o XML completo, que a SEFAZ libera depois
             que a contabilidade registra a Ciência da Operação. A próxima consulta já completa esta nota.
+          </p>
+        </div>
+      )}
+
+      {fornecedor?.status === "pendente" && (
+        <div className="mb-4 flex gap-2.5 rounded bg-warn-soft px-3.5 py-3 text-[12.5px] text-warn">
+          <Hourglass className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
+          <p>
+            O emitente <b>{fornecedor.trade_name ?? fornecedor.legal_name}</b> foi cadastrado automaticamente e está
+            <b> aguardando aprovação</b>.{" "}
+            <Link href={`/cadastros/fornecedores/${fornecedor.id}`} className="underline underline-offset-2">
+              Revisar e aprovar o fornecedor
+            </Link>
+          </p>
+        </div>
+      )}
+      {fornecedor?.status === "bloqueado" && (
+        <div className="mb-4 flex gap-2.5 rounded bg-danger-soft px-3.5 py-3 text-[12.5px] text-danger">
+          <Ban className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
+          <p>
+            O fornecedor <b>{fornecedor.trade_name ?? fornecedor.legal_name}</b> está <b>bloqueado</b> (rejeitado no
+            cadastro). Confira antes de gerar pagamento.
           </p>
         </div>
       )}

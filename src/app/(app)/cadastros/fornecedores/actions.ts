@@ -52,3 +52,42 @@ export async function salvarFornecedor(_prev: FormState, form: FormData): Promis
   revalidatePath("/cadastros/fornecedores");
   return { ok: true };
 }
+
+// ---------------------------------------------------------------------
+// Fornecedor que chegou pela nota: aprovar (vira ativo) ou rejeitar
+// (vira bloqueado, com motivo). Quem decide é o banco, com suppliers.edit.
+// ---------------------------------------------------------------------
+const revisao = z.object({
+  id: z.string().uuid(),
+  decisao: z.enum(["aprovar", "rejeitar"]),
+  motivo: z.string().trim().max(500).optional(),
+});
+
+export type RevisaoState = { erro?: string; ok?: boolean; decisao?: "aprovar" | "rejeitar" };
+
+export async function revisarFornecedor(_prev: RevisaoState, form: FormData): Promise<RevisaoState> {
+  const d = revisao.safeParse({
+    id: form.get("id"), decisao: form.get("decisao"), motivo: form.get("motivo") ?? undefined,
+  });
+  if (!d.success) return { erro: "Pedido inválido." };
+  if (d.data.decisao === "rejeitar" && (d.data.motivo ?? "").length < 5) {
+    return { erro: "Escreva o motivo da rejeição (pelo menos 5 letras)." };
+  }
+
+  const { company } = await getSession();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("review_supplier", {
+    _company_id: company.id, _supplier_id: d.data.id, _decisao: d.data.decisao, _motivo: d.data.motivo ?? null,
+  });
+  if (error) {
+    if (error.code === "42501") return { erro: "Você não tem permissão para aprovar fornecedores." };
+    if (error.code === "22023") return { erro: error.message };
+    console.error("[fornecedores] revisão", error);
+    return { erro: "Não foi possível concluir agora." };
+  }
+
+  revalidatePath("/cadastros/fornecedores");
+  revalidatePath(`/cadastros/fornecedores/${d.data.id}`);
+  revalidatePath("/notas");
+  return { ok: true, decisao: d.data.decisao };
+}

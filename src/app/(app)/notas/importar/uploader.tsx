@@ -279,7 +279,7 @@ function NotaCard({ item, onRemove }: { item: Item; onRemove?: () => void }) {
               ) : (
                 <>
                   <AlertTriangle className="h-3.5 w-3.5 text-warn" />
-                  <span className="text-warn">Fornecedor não cadastrado — vira pendência para validação.</span>
+                  <span className="text-warn">Fornecedor novo — entra no cadastro como "aguardando aprovação".</span>
                 </>
               )}
             </p>

@@ -61,7 +61,7 @@ export function FiltrosNotas({
             <option value="">Todas</option>
             <option value="autorizada">Autorizada</option>
             <option value="cancelada">Cancelada</option>
-            <option value="sem_fornecedor">Sem fornecedor cadastrado</option>
+            <option value="sem_fornecedor">Fornecedor a aprovar</option>
             <option value="resumo">Só o resumo (falta o XML)</option>
           </select>
         </div>
