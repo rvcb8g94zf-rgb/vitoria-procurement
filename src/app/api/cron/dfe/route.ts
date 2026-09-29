@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { admin, sincronizarEmpresa } from "@/lib/fiscal/sync";
+import { completarPendentes } from "@/lib/cnpj";
 
 // TLS mútuo com o certificado A1 exige o runtime Node.
 export const runtime = "nodejs";
@@ -24,6 +25,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ erro: "não autorizado" }, { status: 401 });
   }
 
+  const inicio = Date.now();
   const db = admin();
   const { data: conexoes } = await db
     .from("fiscal_connections")
@@ -40,5 +42,15 @@ export async function GET(request: NextRequest) {
     resultados.push({ company_id: c.company_id, status: r.status, mensagem: r.mensagem });
   }
 
-  return NextResponse.json({ executadas: resultados.length, resultados });
+  // depois da SEFAZ: fornecedores que chegaram só pelo resumo da nota ganham
+  // endereço e contato pela base da Receita, no tempo que sobrar
+  const { data: empresas } = await db.from("companies").select("id").eq("is_active", true);
+  const cadastro = [];
+  for (const e of empresas ?? []) {
+    const sobra = 55_000 - (Date.now() - inicio);
+    if (sobra < 12_000) break;
+    cadastro.push({ company_id: e.id, ...(await completarPendentes(db, e.id, { limite: 5, prazoMs: sobra - 4_000 }).catch(() => ({ feitos: 0, completados: 0 }))) });
+  }
+
+  return NextResponse.json({ executadas: resultados.length, resultados, cadastro });
 }

@@ -25,11 +25,11 @@ export const NAV: NavGroup[] = [
   {
     title: "COMPRAS",
     items: [
-      { label: "Solicitações", href: "/compras/solicitacoes", module: "purchase_requests", icon: "FileText", soon: true },
-      { label: "Cotações", href: "/compras/cotacoes", module: "quotations", icon: "ListChecks", soon: true },
-      { label: "Pedidos de compra", href: "/compras/pedidos", module: "purchase_orders", icon: "ClipboardList", soon: true },
-      { label: "Aprovações", href: "/compras/aprovacoes", module: "approvals", icon: "CheckCheck", soon: true },
-      { label: "Recebimentos", href: "/compras/recebimentos", module: "goods_receipts", icon: "PackageCheck", soon: true },
+      { label: "Solicitações", href: "/interno/compras/solicitacoes", module: "purchase_requests", icon: "FileText" },
+      { label: "Cotações", href: "/interno/compras/cotacoes", module: "quotations", icon: "ListChecks" },
+      { label: "Pedidos de compra", href: "/interno/compras/pedidos", module: "purchase_orders", icon: "ClipboardList" },
+      { label: "Aprovações", href: "/interno/compras/aprovacoes", module: "approvals", icon: "CheckCheck" },
+      { label: "Recebimentos", href: "/interno/compras/recebimentos", module: "goods_receipts", icon: "PackageCheck" },
     ],
   },
   {
@@ -38,8 +38,8 @@ export const NAV: NavGroup[] = [
       { label: "Todas as notas", href: "/interno/notas", module: "invoices", icon: "Receipt" },
       { label: "Consulta SEFAZ", href: "/interno/notas/consulta", module: "dfe", icon: "RadioTower" },
       { label: "Importar XML", href: "/interno/notas/importar", module: "xml_import", icon: "Upload" },
-      { label: "Divergências", href: "/interno/notas/divergencias", module: "divergences", icon: "TriangleAlert", soon: true },
-      { label: "Validar cadastros", href: "/interno/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck", soon: true },
+      { label: "Divergências", href: "/interno/notas/divergencias", module: "divergences", icon: "TriangleAlert" },
+      { label: "Validar cadastros", href: "/interno/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck" },
     ],
   },
   {

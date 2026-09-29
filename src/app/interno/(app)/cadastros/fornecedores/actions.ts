@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
+import { completarFornecedor, completarPendentes } from "@/lib/cnpj";
 
 const digits = (v: unknown) => String(v ?? "").replace(/\D/g, "");
 
@@ -90,4 +91,26 @@ export async function revisarFornecedor(_prev: RevisaoState, form: FormData): Pr
   revalidatePath(`/interno/cadastros/fornecedores/${d.data.id}`);
   revalidatePath("/interno/notas");
   return { ok: true, decisao: d.data.decisao };
+}
+
+export type ReceitaState = { erro?: string; ok?: boolean; msg?: string };
+
+/** Busca o CNPJ na Receita e completa o que estiver vazio no cadastro. */
+export async function completarPelaReceita(_prev: ReceitaState, form: FormData): Promise<ReceitaState> {
+  const id = String(form.get("id") ?? "");
+  const { company, permissions } = await getSession();
+  if (!permissions.has("suppliers.edit")) return { erro: "Você não tem permissão para editar fornecedores." };
+  const supabase = await createClient();
+  if (id) {
+    const { data: s } = await supabase.from("suppliers").select("doc_number, doc_type").eq("id", id).eq("company_id", company.id).maybeSingle();
+    if (!s || s.doc_type !== "cnpj") return { erro: "A consulta à Receita é só para CNPJ." };
+    const r = await completarFornecedor(supabase, company.id, id, s.doc_number);
+    revalidatePath(`/interno/cadastros/fornecedores/${id}`);
+    revalidatePath("/interno/cadastros/fornecedores");
+    if (!r.ok) return { erro: r.erro ?? "Não foi possível consultar agora." };
+    return { ok: true, msg: r.campos?.length ? `Completado: ${r.campos.join(", ")}.` : "Dados da Receita atualizados; o cadastro já estava completo." };
+  }
+  const r = await completarPendentes(supabase, company.id, { limite: 15, prazoMs: 45_000 });
+  revalidatePath("/interno/cadastros/fornecedores");
+  return { ok: true, msg: `${r.feitos} consultado(s), ${r.completados} completado(s).` };
 }

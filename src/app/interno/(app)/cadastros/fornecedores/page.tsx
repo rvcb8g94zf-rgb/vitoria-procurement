@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { cnpj as fmtDoc } from "@/lib/format";
 import { FornecedorDialog } from "./dialog";
 import { RevisarFornecedor } from "./revisar";
+import { BotaoReceita } from "./receita";
+
+export const maxDuration = 60;
 import type { PaymentTerm } from "@/types";
 
 export const metadata = { title: "Fornecedores · Vitória Procurement" };
@@ -57,6 +60,7 @@ export default async function FornecedoresPage({
   const fornecedores = situacao ? todos.filter((f) => f.status === situacao) : todos;
   const podeAprovar = permissions.has("suppliers.edit");
   const contagem = (v: string) => (v ? todos.filter((f) => f.status === v).length : todos.length);
+  const semReceita = todos.filter((f) => f.doc_type === "cnpj" && !f.registry_checked_at && ["ativo", "pendente"].includes(f.status)).length;
 
   return (
     <div className="max-w-[1200px] px-6 pb-14 pt-5">
@@ -64,7 +68,12 @@ export default async function FornecedoresPage({
         crumb="Cadastros"
         title="Fornecedores"
         description={`${todos.length} em ${company.trade_name ?? company.legal_name}.`}
-        actions={permissions.has("suppliers.create") ? <FornecedorDialog condicoes={terms} /> : undefined}
+        actions={
+          <>
+            {podeAprovar && todos.some((f) => f.doc_type === "cnpj") && <BotaoReceita rotulo="Completar pela Receita" />}
+            {permissions.has("suppliers.create") && <FornecedorDialog condicoes={terms} />}
+          </>
+        }
       />
 
       {pendentes > 0 && situacao !== "pendente" && (
@@ -76,6 +85,12 @@ export default async function FornecedoresPage({
             Chegaram pelas notas fiscais — confira os dados e aprove ou rejeite.
           </span>
         </Link>
+      )}
+
+      {podeAprovar && semReceita > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded border border-line bg-surface px-3.5 py-2.5 text-[12.5px] text-graphite">
+          <span><b>{semReceita}</b> fornecedor(es) sem os dados da Receita (endereço, telefone, situação do CNPJ). Use “Completar pela Receita” acima; a consulta também roda sozinha depois de cada busca na SEFAZ.</span>
+        </div>
       )}
 
       <div className="mb-3 flex flex-wrap gap-1.5">
@@ -135,6 +150,9 @@ export default async function FornecedoresPage({
                     <span className={`badge ${BADGE[f.status] ?? BADGE.inativo}`}>{ROTULO[f.status] ?? f.status}</span>
                     {f.status === "pendente" && (
                       <span className="mt-1 block text-[11px] text-muted">veio de nota fiscal</span>
+                    )}
+                    {f.registry_status && f.registry_status !== "ATIVA" && (
+                      <span className="mt-1 block text-[11px] font-semibold text-danger">CNPJ {String(f.registry_status).toLowerCase()} na Receita</span>
                     )}
                   </td>
                   {podeAprovar && pendentes > 0 && (
