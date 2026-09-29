@@ -200,6 +200,59 @@ em `ICP_BRASIL_CA_PEM` e são somados à lista padrão.
 
 **Região.** As funções rodam em `gru1` (São Paulo), configurado no projeto do Vercel.
 
+## Reforma tributária (IBS/CBS) — 0023
+
+`app.apply_ibscbs(nota)` lê do XML gravado os grupos `IBSCBS` e `IS` de cada item e os totais
+`IBSCBSTot`, `ISTot` e `vNFTot`. `save_invoice` chama a função em toda nota nova; a 0023
+reprocessou as que já estavam no banco. Em 2026 os valores são de teste e informativos; IBS e CBS
+não entram no custo cheio (são crédito). O valor a pagar continua sendo o `vNF`.
+
+A 0023 também põe um gatilho em `activity_logs` e `notifications` que prefixa `/interno` nos
+links antigos gravados pelas funções.
+
+## Divergências — 0024
+
+Calculadas na hora por `list_divergences` (nada fica desatualizado): nota cancelada/denegada com
+título valendo, operação não realizada/desconhecida, parcelas ≠ total, título de fornecedor
+bloqueado, nota do regime normal sem IBS/CBS depois de 03/08/2026 e carta de correção. Só a revisão
+humana é gravada (`divergence_reviews`, com o que foi feito); dá para devolver à fila.
+
+## Validar cadastros — 0025
+
+`pending_products` lista os códigos de fornecedor sem produto. `resolve_pending_product` liga a um
+produto existente, cria um produto novo (SKU digitado, NCM/EAN/unidade da nota) ou ignora com
+motivo. Ligar/criar grava o código em `supplier_products` e liga de volta os itens das notas já
+recebidas, com histórico de preço.
+
+## Ciclo de compras (fase 2) — 0026 a 0029
+
+Fluxo: **solicitação → (cotação) → pedido → aprovação → envio → recebimento**. Também dá para abrir
+pedido direto, sem solicitação.
+
+- **Solicitação** (`/interno/compras/solicitacoes`): qualquer perfil com `purchase_requests.create`
+  pede; o Compras (quem pode criar pedido) aceita — e já abre cotação ou pedido — ou recusa com
+  justificativa. Quem pediu acompanha a cotação e os pedidos gerados (`request_followup`).
+- **Cotação** (`/interno/compras/cotacoes`): até 10 fornecedores ativos; texto pronto por fornecedor
+  (copiar ou abrir no WhatsApp); o comprador digita preço, frete, prazo, condição e validade; o mapa
+  marca o menor preço por item; ao encerrar, gera um pedido em rascunho por fornecedor vencedor.
+- **Pedido** (`/interno/compras/pedidos`): rascunho → aprovação por valor (`approval_rules`:
+  até R$ 2.000 Compras, até R$ 10.000 Financeiro, acima Diretoria). Quem lança dentro da própria faixa
+  já aprova ao enviar; fora disso aprova o perfil da faixa ou Diretoria/Administrador, **nunca quem
+  lançou**. Recusar cancela; pedir alteração volta para rascunho. Impressão/PDF e texto para WhatsApp.
+- **Aprovações** (`/interno/compras/aprovacoes`): a fila de cada um, conforme o perfil.
+- **Recebimento** (`/interno/compras/recebimentos`): conferência item a item contra o pedido, parcial
+  ou total; receber a mais exige observação; liga a NF-e da entrega (base da conferência
+  pedido × nota × recebimento da fase 3). Cancelar um recebimento devolve as quantidades ao pedido.
+
+## Fornecedor completo pela Receita — 0030
+
+O resumo da NF-e (resNFe) só traz CNPJ, razão social e IE. `src/lib/cnpj.ts` consulta o CNPJ na
+BrasilAPI (reserva: CNPJ.ws) e `apply_supplier_registry` preenche só o que estiver vazio (endereço,
+CEP, telefone, e-mail, nome fantasia) e grava situação cadastral, CNAE, porte e Simples. Roda depois
+de cada consulta à SEFAZ (cron e manual, no tempo que sobrar), pelo botão no fornecedor e pelo
+"Completar pela Receita" da lista. CNPJ baixado/inapto aparece em vermelho no cadastro.
+`CNPJ_API_TESTE` troca a URL só fora de produção.
+
 ## Supabase: cuidados
 
 - **Plano gratuito pausa** o projeto depois de 7 dias sem acesso. Os dados ficam, mas o
@@ -251,6 +304,7 @@ src/
     interno/                    o sistema (noindex)
     interno/login/              autenticação
     interno/(app)/              rotas autenticadas (layout com menu)
+      compras/                  solicitações, cotações (mapa), pedidos (+ impressão), aprovações, recebimentos
       cadastros/                departamentos, centros de custo, fornecedores, produtos
       notas/                    notas recebidas (lista) e [id]/ (detalhe)
         importar/               envio de XML com prévia
@@ -281,5 +335,5 @@ src/
     format.ts                   moeda, CNPJ e datas em pt-BR
   types/
 public/site/                    fotos e logo do site
-supabase/migrations/            0001–0022 (já aplicadas)
+supabase/migrations/            0001–0030 (já aplicadas)
 ```
