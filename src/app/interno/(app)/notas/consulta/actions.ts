@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
 import { abrirCertificado, ErroCertificado } from "@/lib/fiscal/certificado";
+import { completarPendentes } from "@/lib/cnpj";
 import { admin, caminhoCertificado, nomeSegredo, sincronizarEmpresa, type ResultadoSync } from "@/lib/fiscal/sync";
 
 /**
@@ -129,7 +130,14 @@ export async function consultarAgora(_prev: EstadoConsulta, _form: FormData): Pr
     return { erro: "Você não tem permissão para consultar a SEFAZ nesta empresa." };
   }
   try {
+    const inicio = Date.now();
     const resultado = await sincronizarEmpresa(company.id, "manual");
+    // fornecedor novo que veio só do resumo: completa endereço e contato pela Receita
+    const sobra = 50_000 - (Date.now() - inicio);
+    if (sobra > 12_000) {
+      await completarPendentes(admin(), company.id, { limite: 5, prazoMs: sobra - 4_000 }).catch(() => null);
+      revalidatePath("/interno/cadastros/fornecedores");
+    }
     revalidatePath("/interno/notas/consulta");
     revalidatePath("/interno/notas");
     return { resultado };

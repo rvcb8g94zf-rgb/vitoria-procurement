@@ -55,7 +55,7 @@ function envelope(uf: number, ambiente: Environment, cnpj: string, ultNSU: strin
     `</distDFeInt></nfeDadosMsg></nfeDistDFeInteresse></soap12:Body></soap12:Envelope>`;
 }
 
-const pick = (xml: string, tag: string) =>
+export const pick = (xml: string, tag: string) =>
   new RegExp(`<(?:[A-Za-z0-9_]+:)?${tag}[^>]*>([\\s\\S]*?)</(?:[A-Za-z0-9_]+:)?${tag}>`).exec(xml)?.[1]?.trim() ?? "";
 
 function autoridades(): string[] | undefined {
@@ -63,6 +63,61 @@ function autoridades(): string[] | undefined {
   if (!extra) return undefined; // lista padrão do Node
   const pems = extra.match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? [];
   return [...tls.rootCertificates, ...pems];
+}
+
+/**
+ * POST SOAP 1.2 com TLS mútuo (certificado A1 da empresa). O certificado do
+ * servidor é sempre verificado. Usado pela distribuição e pelos eventos.
+ */
+export async function postSoap(opts: {
+  url: URL; action: string; body: string; keyPem: string; certPem: string; cadeiaPem?: string[]; timeoutMs?: number;
+}): Promise<string> {
+  const { url, body } = opts;
+  return await new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        host: url.hostname,
+        port: url.port || 443,
+        path: url.pathname,
+        method: "POST",
+        key: opts.keyPem,
+        // certificado da empresa + intermediários que vieram no .pfx
+        cert: [opts.certPem, ...(opts.cadeiaPem ?? [])].join("\n"),
+        ca: autoridades(),
+        minVersion: "TLSv1.2",
+        headers: {
+          "Content-Type": `application/soap+xml; charset=utf-8; action="${opts.action}"`,
+          "Content-Length": Buffer.byteLength(body),
+        },
+        timeout: opts.timeoutMs ?? 25000,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          const texto = Buffer.concat(chunks).toString("utf8");
+          // SOAP 1.2 devolve falha com 500 e corpo Fault: deixa o leitor tratar
+          if ((res.statusCode ?? 0) >= 400 && !/Fault/.test(texto)) {
+            reject(new ErroSefaz("http", `A SEFAZ respondeu HTTP ${res.statusCode}.`));
+          } else {
+            resolve(texto);
+          }
+        });
+      }
+    );
+    req.on("timeout", () => req.destroy(new ErroSefaz("rede", "A SEFAZ não respondeu a tempo.")));
+    req.on("error", (e: NodeJS.ErrnoException) => {
+      if (e instanceof ErroSefaz) return reject(e);
+      const codigo = e.code ?? "";
+      if (/CERT|SELF_SIGNED|UNABLE_TO|ERR_TLS|SSL/i.test(codigo) || /certificate|handshake|alert/i.test(e.message)) {
+        reject(new ErroSefaz("tls", `Falha na conexão segura com a SEFAZ (${codigo || e.message}).`));
+      } else {
+        reject(new ErroSefaz("rede", `Não foi possível falar com a SEFAZ (${codigo || e.message}).`));
+      }
+    });
+    req.write(body);
+    req.end();
+  });
 }
 
 /** Lê a resposta do serviço. Exportado para os testes. */
@@ -108,50 +163,9 @@ export async function consultarDistribuicao(opts: {
   const teste = process.env.NODE_ENV !== "production" ? process.env.DFE_ENDPOINT_TESTE : undefined;
   const url = new URL(opts.endpoint ?? teste ?? ENDPOINTS[opts.environment]);
 
-  const raw: string = await new Promise((resolve, reject) => {
-    const req = https.request(
-      {
-        host: url.hostname,
-        port: url.port || 443,
-        path: url.pathname,
-        method: "POST",
-        key: opts.keyPem,
-        // certificado da empresa + intermediários que vieram no .pfx
-        cert: [opts.certPem, ...(opts.cadeiaPem ?? [])].join("\n"),
-        ca: autoridades(),
-        minVersion: "TLSv1.2",
-        headers: {
-          "Content-Type": `application/soap+xml; charset=utf-8; action="${ACTION}"`,
-          "Content-Length": Buffer.byteLength(body),
-        },
-        timeout: opts.timeoutMs ?? 25000,
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (c) => chunks.push(c));
-        res.on("end", () => {
-          const texto = Buffer.concat(chunks).toString("utf8");
-          // SOAP 1.2 devolve falha com 500 e corpo Fault: deixa o leitor tratar
-          if ((res.statusCode ?? 0) >= 400 && !/Fault/.test(texto)) {
-            reject(new ErroSefaz("http", `A SEFAZ respondeu HTTP ${res.statusCode}.`));
-          } else {
-            resolve(texto);
-          }
-        });
-      }
-    );
-    req.on("timeout", () => req.destroy(new ErroSefaz("rede", "A SEFAZ não respondeu a tempo.")));
-    req.on("error", (e: NodeJS.ErrnoException) => {
-      if (e instanceof ErroSefaz) return reject(e);
-      const codigo = e.code ?? "";
-      if (/CERT|SELF_SIGNED|UNABLE_TO|ERR_TLS|SSL/i.test(codigo) || /certificate|handshake|alert/i.test(e.message)) {
-        reject(new ErroSefaz("tls", `Falha na conexão segura com a SEFAZ (${codigo || e.message}).`));
-      } else {
-        reject(new ErroSefaz("rede", `Não foi possível falar com a SEFAZ (${codigo || e.message}).`));
-      }
-    });
-    req.write(body);
-    req.end();
+  const raw = await postSoap({
+    url, action: ACTION, body, keyPem: opts.keyPem, certPem: opts.certPem, cadeiaPem: opts.cadeiaPem,
+    timeoutMs: opts.timeoutMs,
   });
 
   return lerResposta(raw);

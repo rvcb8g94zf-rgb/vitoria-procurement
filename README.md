@@ -253,6 +253,50 @@ de cada consulta à SEFAZ (cron e manual, no tempo que sobrar), pelo botão no f
 "Completar pela Receita" da lista. CNPJ baixado/inapto aparece em vermelho no cadastro.
 `CNPJ_API_TESTE` troca a URL só fora de produção.
 
+## Conferência pedido × nota × recebimento (fase 3) — 0031
+
+A nota é ligada ao pedido sozinha quando o recebimento aponta a nota ou quando o XML traz o número do pedido
+(xPed); também dá para ligar à mão na tela da nota. Cada item da nota é pareado com o item do pedido pelo
+produto (depois de validado), por escolha manual ou direto quando os dois lados têm um item só; a quantidade
+usa o fator do de-para do fornecedor.
+
+Divergências (com as tolerâncias da empresa): preço acima do pedido, faturado mais do que chegou, faturado
+mais do que o pedido, item da nota fora do pedido e pedido cancelado. Nota com divergência fica **retida**: o
+banco recusa a baixa dos títulos dela (vale para qualquer tela). Quem tem "aprovar divergências" (Diretoria,
+Fiscal, Administrador) libera com motivo; a liberação cobre só as divergências daquele momento. Nada é
+gravado além das ligações, pares manuais e liberações — o resto é calculado na hora.
+
+Telas: card "Conferência com o pedido" na nota, Notas fiscais › Conferência com pedido, notas no pedido,
+selo "Retido" no contas a pagar e pendência na visão geral.
+
+## Manifestação do destinatário (opcional) — 0032
+
+Decisão de 30/09/2026 (contabilidade e diretoria): a empresa pode registrar ela mesma os eventos de
+manifestação, sem esperar a contabilidade. A consulta à SEFAZ continua igual e só lê; a manifestação é um
+envio à parte, **sempre feito por uma pessoa** com a permissão "manifestar" (Administrador, Diretoria, Fiscal).
+Nada é enviado sozinho.
+
+Eventos (NT 2020.001 v1.60, prazos do Ajuste SINIEF 14/26, em vigor desde 01/06/2026):
+
+| Evento | Código | Prazo | Observação |
+|---|---|---|---|
+| Ciência da Operação | 210210 | 10 dias | não é conclusiva; libera o XML completo |
+| Confirmação da Operação | 210200 | 90 dias | conclusiva |
+| Desconhecimento da Operação | 210220 | 90 dias | conclusiva |
+| Operação não Realizada | 210240 | 90 dias | conclusiva, justificativa de 15 a 255 caracteres |
+
+Sem manifestação conclusiva em 90 dias, a operação passa a ser considerada confirmada. Cada conclusiva pode ser
+registrada até 2 vezes; vale a última. O sistema calcula o prazo pela data de emissão (nunca promete mais prazo
+do que a SEFAZ dá). Cancelamento e Carta de Correção são eventos do emitente, não do destinatário.
+
+Onde: card "Manifestação do destinatário" na página da nota; em Consulta SEFAZ, "Notas aguardando Ciência"
+(envio em lote, até 20 por vez) e "Manifestação conclusiva vencendo".
+
+Como funciona: o banco confere permissão, prazo e sequência com o usuário logado (manifest_begin); o servidor
+assina o evento com o A1 (XMLDSig RSA-SHA1, C14N) e envia ao NFeRecepcaoEvento4 do Ambiente Nacional; o retorno
+só pode ser gravado com a chave de serviço (manifest_finish). Cada tentativa fica no histórico com o
+procEventoNFe (evento assinado + protocolo). 573 (duplicidade) conta como registrado.
+
 ## Supabase: cuidados
 
 - **Plano gratuito pausa** o projeto depois de 7 dias sem acesso. Os dados ficam, mas o
@@ -335,5 +379,5 @@ src/
     format.ts                   moeda, CNPJ e datas em pt-BR
   types/
 public/site/                    fotos e logo do site
-supabase/migrations/            0001–0030 (já aplicadas)
+supabase/migrations/            0001–0032 (já aplicadas)
 ```

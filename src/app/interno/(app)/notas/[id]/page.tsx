@@ -9,6 +9,11 @@ import { requirePermission } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { cnpj, date as dataBR, dateTime, decimal, money } from "@/lib/format";
 import { STATUS_LABEL } from "@/lib/notas";
+import { ConferenciaNota } from "./conferencia";
+import { ManifestacaoNota } from "./manifestacao";
+
+// a manifestação (evento na SEFAZ) roda nesta rota
+export const maxDuration = 60;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const n = (v: unknown) => (v === null || v === undefined || v === "" ? 0 : Number(v));
@@ -24,6 +29,7 @@ const carregar = cache(async (id: string) => {
       emitter_ie, emitter_uf, dest_cnpj, total_amount, products_total, discount_total, freight_total,
       insurance_total, other_total, icms_st_total, ipi_total, item_count, doc_kind, fiscal_status,
       protocol, source, source_filename, xml_content, created_at, supplier_id, manifestation, nsu,
+      emitter_crt, ibscbs_base_total, ibs_total, cbs_total, is_total, ibscbs_credpres, nf_total_reform,
       supplier:suppliers(id, legal_name, trade_name, status),
       importer:users!received_invoices_imported_by_fkey(full_name),
       items:received_invoice_items(*),
@@ -46,7 +52,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 }
 
 export default async function NotaPage({ params }: { params: Promise<{ id: string }> }) {
-  const { permissions } = await requirePermission("invoices");
+  const { company, permissions } = await requirePermission("invoices");
   const { id } = await params;
   const nota = await carregar(id);
   if (!nota) notFound();
@@ -59,6 +65,13 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
   const semProduto = itens.filter((i) => !i.product_id).length;
   const cancelada = nota.fiscal_status === "cancelada";
   const resumo = nota.doc_kind === "resumo";
+  // reforma tributária (NT 2025.002)
+  const temReforma = nota.ibs_total !== null || nota.cbs_total !== null || itens.some((i) => i.ibscbs_cst);
+  const simples = ["1", "2", "4"].includes(String(nota.emitter_crt ?? ""));
+  const semReformaDevia = !resumo && !temReforma && !simples && nota.emitter_crt === "3"
+    && String(nota.issued_at ?? "") >= "2026-08-03";
+  const totalReformaDifere = nota.nf_total_reform !== null
+    && Math.abs(n(nota.nf_total_reform) - n(nota.total_amount)) >= 0.01;
   const MANIF: Record<string, string> = {
     nenhuma: "Nenhuma registrada", ciencia: "Ciência da Operação", confirmada: "Operação confirmada",
     desconhecida: "Operação desconhecida", nao_realizada: "Operação não realizada",
@@ -78,7 +91,11 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
       {cancelada && (
         <div className="mb-4 flex gap-2.5 rounded bg-danger-soft px-3.5 py-3 text-[12.5px] text-danger">
           <Ban className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
-          <p><b>Nota cancelada.</b> Ela fica no histórico, mas não deve virar pagamento.</p>
+          <p>
+            <b>Nota cancelada.</b> Ela fica no histórico, mas não deve virar pagamento. Se ela já tinha virado
+            título, ele aparece em{" "}
+            <Link href="/interno/notas/divergencias" className="underline underline-offset-2">Divergências</Link>.
+          </p>
         </div>
       )}
 
@@ -87,7 +104,8 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.8} />
           <p>
             <b>Só o resumo da SEFAZ.</b> Itens e parcelas chegam com o XML completo, que a SEFAZ libera depois
-            que a contabilidade registra a Ciência da Operação. A próxima consulta já completa esta nota.
+            da Ciência da Operação — feita aqui, em “Manifestação do destinatário”, ou pela contabilidade. A consulta
+            seguinte completa esta nota.
           </p>
         </div>
       )}
@@ -160,6 +178,7 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
                 <th className="th w-28 text-right">PREÇO</th>
                 <th className="th w-28 text-right">TOTAL</th>
                 <th className="th w-28 text-right">CUSTO CHEIO</th>
+                {temReforma && <th className="th w-32 text-right">IBS / CBS</th>}
               </tr>
             </thead>
             <tbody>
@@ -177,9 +196,9 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
                             <Package className="h-3 w-3" /> ligado ao cadastro
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-warn">
-                            <AlertTriangle className="h-3 w-3" /> produto não cadastrado
-                          </span>
+                          <Link href="/interno/notas/validacao" className="inline-flex items-center gap-1 text-warn hover:underline">
+                            <AlertTriangle className="h-3 w-3" /> produto não cadastrado — validar
+                          </Link>
                         )}
                         {i.ean && <span className="ml-2 font-mono">EAN {i.ean}</span>}
                       </div>
@@ -200,6 +219,18 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
                         <span className="block text-[11px] text-warn">+{acrescimo.toFixed(1)}%</span>
                       )}
                     </td>
+                    {temReforma && (
+                      <td className="td whitespace-nowrap text-right font-mono tabular-nums text-graphite">
+                        {i.ibscbs_cst ? (
+                          <>
+                            {money(n(i.ibs_amount))} / {money(n(i.cbs_amount))}
+                            <span className="block text-[11px] text-muted" title="CST · cClassTrib">
+                              CST {i.ibscbs_cst} · {i.ibscbs_class ?? "—"}
+                            </span>
+                          </>
+                        ) : "—"}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -207,6 +238,51 @@ export default async function NotaPage({ params }: { params: Promise<{ id: strin
           </table>
         </div>
       </Card>
+
+      <ConferenciaNota companyId={company.id} notaId={nota.id} />
+      <ManifestacaoNota companyId={company.id} nota={{ id: nota.id, number: nota.number, fiscal_status: nota.fiscal_status }} />
+
+      {!resumo && (temReforma || semReformaDevia || simples) && (
+        <Card
+          title="Reforma tributária — IBS e CBS"
+          note={temReforma
+            ? "Em 2026 as alíquotas são de teste (0,1% IBS + 0,9% CBS) e o valor é só informativo. Para a empresa é crédito, por isso não entra no custo cheio."
+            : undefined}
+          className="mb-4"
+        >
+          {temReforma ? (
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-4">
+                {[
+                  { l: "Base IBS/CBS", v: money(n(nota.ibscbs_base_total)) },
+                  { l: "IBS", v: money(n(nota.ibs_total)) },
+                  { l: "CBS", v: money(n(nota.cbs_total)) },
+                  n(nota.is_total) > 0
+                    ? { l: "Imposto Seletivo", v: money(n(nota.is_total)) }
+                    : { l: "Crédito presumido", v: money(n(nota.ibscbs_credpres)) },
+                ].map((k) => (
+                  <div key={k.l} className="bg-surface px-3.5 py-3">
+                    <div className="text-[11px] font-medium text-muted">{k.l}</div>
+                    <div className="mt-1 font-mono text-[14px] font-semibold tabular-nums">{k.v}</div>
+                  </div>
+                ))}
+              </div>
+              {totalReformaDifere && (
+                <p className="mt-3 text-[12px] text-graphite">
+                  O emitente informou <b>{money(n(nota.nf_total_reform))}</b> como total com os tributos da reforma
+                  (vNFTot). O valor a pagar continua sendo o total da nota, <b>{money(n(nota.total_amount))}</b>.
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className={`p-4 text-[12.5px] ${semReformaDevia ? "text-warn" : "text-graphite"}`}>
+              {semReformaDevia
+                ? "Esta nota veio sem IBS/CBS, que são obrigatórios desde 03/08/2026 para emitentes do regime normal. Vale avisar o fornecedor."
+                : "Emitente do Simples Nacional: o IBS e a CBS passam a vir na nota a partir de 04/01/2027."}
+            </p>
+          )}
+        </Card>
+      )}
 
       <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
         <Card

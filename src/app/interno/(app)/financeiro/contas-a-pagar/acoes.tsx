@@ -10,8 +10,9 @@ import { cancelarTitulo, darBaixa, editarTitulo, type FormState } from "./action
 const reais = (v: number) => v.toFixed(2);
 
 export function AcoesTitulo({
-  titulo, hoje, podePagar, podeEditar, podeCancelar,
+  titulo, hoje, podePagar, podeEditar, podeCancelar, retido = false,
 }: {
+  retido?: boolean;
   titulo: PayableRow;
   hoje: string;
   podePagar: boolean;
@@ -33,7 +34,13 @@ export function AcoesTitulo({
 
   return (
     <div className="flex justify-end gap-1.5">
-      {podePagar && aberto && (
+      {podePagar && aberto && retido && (
+        <button type="button" className="btn h-7 shrink-0 px-2 text-[11.5px]" disabled
+                title="Pagamento retido: a nota não bate com o pedido ou com o recebimento. Abra a nota para ver a conferência.">
+          <Banknote className="h-3.5 w-3.5" /> Retido
+        </button>
+      )}
+      {podePagar && aberto && !retido && (
         <button type="button" className="btn btn-primary h-7 shrink-0 px-2 text-[11.5px]" onClick={() => setModal("baixa")}>
           <Banknote className="h-3.5 w-3.5" /> Baixar
         </button>

@@ -14,7 +14,8 @@ import { abrirCertificado, ErroCertificado } from "./certificado";
  *  • cStat 656 (consumo indevido) → para na hora e espera 65 min;
  *  • o cursor (ultNSU) só avança depois que os documentos do lote foram
  *    gravados — falha no meio é reprocessar, nunca perder documento;
- *  • o sistema só LÊ: nenhuma manifestação é enviada daqui.
+ *  • a consulta só LÊ. A manifestação do destinatário é outro envio
+ *    (evento.ts), sempre disparado por uma pessoa com permissão.
  */
 const CSTAT_LOTE = "138";
 const CSTAT_VAZIO = "137";

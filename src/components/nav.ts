@@ -39,6 +39,7 @@ export const NAV: NavGroup[] = [
       { label: "Consulta SEFAZ", href: "/interno/notas/consulta", module: "dfe", icon: "RadioTower" },
       { label: "Importar XML", href: "/interno/notas/importar", module: "xml_import", icon: "Upload" },
       { label: "Divergências", href: "/interno/notas/divergencias", module: "divergences", icon: "TriangleAlert" },
+      { label: "Conferência com pedido", href: "/interno/notas/conferencia", module: "invoices", icon: "ListChecks" },
       { label: "Validar cadastros", href: "/interno/notas/validacao", module: "pending_registrations", icon: "UserRoundCheck" },
     ],
   },

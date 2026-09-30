@@ -32,7 +32,7 @@ export default async function ContasAPagarPage({
   const pulados = inteiro(sp.pulados);
   const supabase = await createClient();
 
-  const [{ data, error }, { data: forn }, { count: totalGeral }, { count: pendentes }] = await Promise.all([
+  const [{ data, error }, { data: forn }, { count: totalGeral }, { count: pendentes }, { data: retidasRaw }] = await Promise.all([
     supabase.rpc("search_payables", {
       _company_id: company.id,
       _from: filtros.de,
@@ -47,7 +47,10 @@ export default async function ContasAPagarPage({
     supabase.from("payables").select("id", { count: "exact", head: true }).eq("company_id", company.id),
     supabase.from("received_invoice_duplicates").select("id", { count: "exact", head: true })
       .eq("company_id", company.id),
+    supabase.rpc("held_invoices", { _company_id: company.id }),
   ]);
+  // notas que não bateram com o pedido/recebimento: o banco recusa a baixa
+  const retidas = new Set(((retidasRaw ?? []) as any[]).map((r) => r.invoice_id as string));
 
   if (error) console.error("[contas a pagar] busca", error);
 
@@ -207,10 +210,16 @@ export default async function ContasAPagarPage({
                             : "bg-line-soft text-graphite"}`}>
                             {vencida && r.status !== "cancelado" ? "Vencida" : STATUS_LABEL[r.status] ?? r.status}
                           </span>
+                          {r.invoice_id && retidas.has(r.invoice_id) && (r.status === "aberto" || r.status === "parcial") && (
+                            <Link href={`/interno/notas/${r.invoice_id}`} title="A nota não bate com o pedido ou com o recebimento"
+                                  className="badge ml-1 bg-danger-soft text-danger hover:underline">
+                              Retido
+                            </Link>
+                          )}
                         </td>
                         {temAcoes && (
                           <td className="td">
-                            <AcoesTitulo titulo={r} hoje={hoje} podePagar={podePagar}
+                            <AcoesTitulo titulo={r} hoje={hoje} podePagar={podePagar} retido={!!r.invoice_id && retidas.has(r.invoice_id)}
                                          podeEditar={podeEditar} podeCancelar={podeCancelar} />
                           </td>
                         )}

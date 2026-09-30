@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cnpj as cnpjFmt, date as dataBR, dateTime } from "@/lib/format";
 import { EnviarCertificado, RemoverCertificado } from "./certificado";
 import { ConsultarAgora } from "./consultar";
+import { CienciaEmLote } from "../manifestacao/ciencia-lote";
 
 export const metadata = { title: "Consulta SEFAZ · Vitória Procurement" };
 // a action "consultar agora" roda nesta rota e fala com a SEFAZ
@@ -43,9 +44,14 @@ const hora = (iso: string) =>
   new Intl.DateTimeFormat("pt-BR", { timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(iso));
 
 export default async function ConsultaSefazPage() {
-  const { company } = await requirePermission("dfe");
+  const { company, permissions } = await requirePermission("dfe");
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("dfe_status", { _company_id: company.id });
+  const [{ data, error }, { data: semCiencia }, { data: vencendo }] = await Promise.all([
+    supabase.rpc("dfe_status", { _company_id: company.id }),
+    supabase.rpc("awaiting_ciencia", { _company_id: company.id }),
+    supabase.rpc("awaiting_conclusive", { _company_id: company.id }),
+  ]);
+  const podeManifestar = permissions.has("dfe.manifest");
   if (error) console.error("[consulta] status", error);
   const s = (data ?? { pode_configurar: false, pode_consultar: false, conexao: null, estado: null, execucoes: [], resumos: 0 }) as Status;
 
@@ -77,8 +83,10 @@ export default async function ConsultaSefazPage() {
         <p>
           A contabilidade também consulta este CNPJ. Para não gerar bloqueio na SEFAZ, o sistema consulta
           sozinho <b>uma vez por dia</b>, a consulta manual exige <b>1 hora</b> desde a anterior e qualquer
-          rejeição por excesso (656) faz o sistema parar por 1 hora. O sistema <b>só lê</b>: a Ciência da
-          Operação continua com a contabilidade e aparece aqui quando ela registrar.
+          rejeição por excesso (656) faz o sistema parar por 1 hora. A consulta <b>só lê</b>. A manifestação
+          (Ciência, Confirmação, Desconhecimento, Operação não Realizada) é opcional e sempre feita por uma
+          pessoa com permissão — aqui em lote, para a Ciência, ou na página de cada nota. A contabilidade
+          continua podendo manifestar; o que ela registrar aparece aqui também.
         </p>
       </div>
 
@@ -127,7 +135,7 @@ export default async function ConsultaSefazPage() {
                 {s.resumos > 0 && (
                   <p className="mt-2 text-[11.5px] text-muted">
                     {s.resumos} {s.resumos === 1 ? "nota chegou" : "notas chegaram"} só como resumo. O XML completo vem
-                    depois que a contabilidade registra a Ciência da Operação.{" "}
+                    depois da Ciência da Operação (feita abaixo ou pela contabilidade).{" "}
                     <Link href="/interno/notas?situacao=resumo" className="underline underline-offset-2">Ver notas</Link>
                   </p>
                 )}
@@ -157,6 +165,43 @@ export default async function ConsultaSefazPage() {
               </dl>
             </Card>
           </div>
+
+          {((semCiencia ?? []) as any[]).length > 0 && (
+            <Card
+              title="Notas aguardando Ciência da Operação"
+              note="Chegaram só como resumo e ainda estão no prazo de 10 dias. A Ciência libera o XML completo na próxima consulta."
+              className="mb-4"
+            >
+              <CienciaEmLote notas={(semCiencia ?? []) as any[]} podeEnviar={podeManifestar} />
+              {!podeManifestar && (
+                <p className="border-t border-line-soft px-4 py-2.5 text-[11.5px] text-muted">
+                  Só Administrador, Diretoria e Fiscal podem manifestar.
+                </p>
+              )}
+            </Card>
+          )}
+
+          {((vencendo ?? []) as any[]).length > 0 && (
+            <Card
+              title="Manifestação conclusiva vencendo"
+              note="Sem Confirmação, Desconhecimento ou Operação não Realizada em 90 dias, a operação passa a ser considerada confirmada. Decida nota a nota."
+              className="mb-4"
+            >
+              <ul className="px-4 py-1 text-[12.5px]">
+                {((vencendo ?? []) as any[]).map((v) => (
+                  <li key={v.invoice_id} className="flex flex-wrap gap-x-3 border-b border-line-soft py-2 last:border-0">
+                    <Link href={`/interno/notas/${v.invoice_id}` as any} className="font-mono font-semibold hover:text-accent hover:underline">
+                      NF {v.number ?? "s/nº"}
+                    </Link>
+                    <span>{v.emitter_name}</span>
+                    <span className={`ml-auto ${v.days_left <= 5 ? "text-danger" : "text-muted"}`}>
+                      até {dataBR(v.deadline)} ({v.days_left === 0 ? "hoje" : `${v.days_left} dias`})
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           <Card title="Histórico de consultas" note="As 15 mais recentes, automáticas e manuais.">
             {s.execucoes.length === 0 ? (
