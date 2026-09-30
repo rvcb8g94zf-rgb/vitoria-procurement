@@ -16,10 +16,18 @@ export function AcoesValidacao({
 }: { item: Pend; produtos: Produto[]; unidades: { code: string; name: string }[]; podeCriar: boolean }) {
   const [modo, setModo] = useState<null | "ligar" | "criar" | "ignorar">(null);
   const [st, acao, pend] = useActionState<ValidarState, FormData>(validarItem, {});
-  const [texto, setTexto] = useState(item.suggested_product ?? "");
+  const rotulo = (p: Produto) => `${p.sku} — ${p.description}`;
+  // código que veio na nota (cProd), pronto para virar SKU
+  const codigoNota = (item.supplier_code ?? "").trim().slice(0, 40);
+  const mesmoCodigo = (cod: string) =>
+    cod ? produtos.find((p) => p.sku.trim().toUpperCase() === cod.trim().toUpperCase()) : undefined;
+  const jaCadastrado = mesmoCodigo(codigoNota);
+  // "Ligar" já abre com a sugestão do sistema ou com o produto que tem o mesmo código da nota
+  const [texto, setTexto] = useState(item.suggested_product ?? (jaCadastrado ? rotulo(jaCadastrado) : ""));
+  const [sku, setSku] = useState(codigoNota);
+  const conflito = modo === "criar" ? mesmoCodigo(sku) : undefined;
   useEffect(() => { if (st.ok) setModo(null); }, [st]);
 
-  const rotulo = (p: Produto) => `${p.sku} — ${p.description}`;
   const escolhido = useMemo(() => produtos.find((p) => rotulo(p) === texto), [texto, produtos]);
   const listaId = `prods-${item.id}`;
   const unidadeNota = (item.unit ?? "").toUpperCase();
@@ -75,7 +83,8 @@ export function AcoesValidacao({
                 <div className="grid grid-cols-[1fr_120px] gap-3">
                   <div>
                     <label className="label" htmlFor={`s-${item.id}`}>Código (SKU) no nosso cadastro</label>
-                    <input id={`s-${item.id}`} name="sku" required maxLength={40} className="field font-mono" autoFocus />
+                    <input id={`s-${item.id}`} name="sku" required maxLength={40} className="field font-mono" autoFocus
+                           value={sku} onChange={(e) => setSku(e.target.value)} />
                   </div>
                   <div>
                     <label className="label" htmlFor={`u-${item.id}`}>Unidade</label>
@@ -90,7 +99,23 @@ export function AcoesValidacao({
                   <input id={`d-${item.id}`} name="descricao" required minLength={3} maxLength={200}
                          className="field" defaultValue={item.description} />
                 </div>
-                <p className="text-[11.5px] text-muted">NCM e EAN vêm da nota.</p>
+                {conflito ? (
+                  <div className="flex flex-wrap items-center gap-2 rounded bg-warn-soft px-3 py-2 text-[12px] text-warn">
+                    <span className="min-w-0 flex-1">
+                      Já existe no cadastro: <b>{rotulo(conflito)}</b>. Se for o mesmo produto, ligue em vez de criar.
+                    </span>
+                    <button type="button" className="btn h-7 px-2 text-[11.5px]"
+                            onClick={() => { setTexto(rotulo(conflito)); setModo("ligar"); }}>
+                      <Link2 className="h-3.5 w-3.5" /> Ligar a ele
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-[11.5px] text-muted">
+                    {codigoNota && sku.trim() === codigoNota
+                      ? "Código, descrição, NCM e EAN vieram da nota. Pode trocar o código se usar outro padrão."
+                      : "NCM e EAN vêm da nota."}
+                  </p>
+                )}
               </>
             )}
 
@@ -105,7 +130,7 @@ export function AcoesValidacao({
             <Aviso erro={st.erro} />
             <div className="flex justify-end gap-2">
               <button type="button" className="btn" onClick={() => setModo(null)}>Voltar</button>
-              <button type="submit" className="btn btn-primary" disabled={pend}>
+              <button type="submit" className="btn btn-primary" disabled={pend || !!conflito}>
                 {pend ? "Salvando…" : modo === "ligar" ? "Ligar" : modo === "criar" ? "Criar e ligar" : "Ignorar"}
               </button>
             </div>
