@@ -4,7 +4,8 @@ import { TrocarSenhaForm } from "./form";
 
 export const metadata = { title: "Trocar senha · Vitória Procurement" };
 
-export default async function TrocarSenhaPage() {
+export default async function TrocarSenhaPage({ searchParams }: { searchParams: Promise<{ recuperacao?: string }> }) {
+  const { recuperacao } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/interno/login");
@@ -16,6 +17,7 @@ export default async function TrocarSenhaPage() {
     .maybeSingle<{ full_name: string; must_change_password: boolean }>();
 
   const obrigatorio = Boolean(perfil?.must_change_password);
+  const recuperando = recuperacao === "1";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-canvas px-5">
@@ -31,15 +33,17 @@ export default async function TrocarSenhaPage() {
         </div>
 
         <h1 className="text-[19px] font-semibold">
-          {obrigatorio ? "Crie a sua senha" : "Trocar senha"}
+          {obrigatorio || recuperando ? "Crie a sua senha" : "Trocar senha"}
         </h1>
         <p className="mb-6 mt-1 text-[12.5px] text-muted">
-          {obrigatorio
+          {recuperando
+            ? `Link confirmado para ${user.email}. Escolha a senha nova para entrar.`
+            : obrigatorio
             ? "A senha atual foi criada por um administrador. Escolha uma que só você saiba para continuar."
             : `Você está em ${user.email}. A senha nova passa a valer na hora.`}
         </p>
 
-        <TrocarSenhaForm obrigatorio={obrigatorio} />
+        <TrocarSenhaForm obrigatorio={obrigatorio || recuperando} />
       </div>
     </main>
   );

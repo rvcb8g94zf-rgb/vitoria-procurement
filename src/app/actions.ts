@@ -8,12 +8,17 @@ import { COMPANY_COOKIE } from "@/lib/session";
 
 export async function trocarEmpresa(companyId: string) {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-  // confere o vínculo antes de gravar o cookie: cookie forjado não
-  // daria acesso (o RLS barra), mas deixaria a interface incoerente
+  // confere o vínculo DESTE usuário antes de gravar o cookie: cookie forjado
+  // não daria acesso (o RLS barra), mas deixaria a interface incoerente.
+  // Sem o filtro por usuário, o administrador enxerga os vínculos de todos
+  // da empresa e a consulta voltava várias linhas (a troca falhava calada).
   const { data } = await supabase
     .from("user_companies")
     .select("company_id")
+    .eq("user_id", user.id)
     .eq("company_id", companyId)
     .eq("is_active", true)
     .maybeSingle();

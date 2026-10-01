@@ -7,7 +7,7 @@ type CookieList = { name: string; value: string; options?: CookieOptions }[];
 // que tem a própria chave, CRON_SECRET) — não passa pela sessão.
 const AREA = "/interno";
 // Dentro de /interno, rotas que não exigem sessão.
-const PUBLIC_ROUTES = ["/interno/login", "/interno/recuperar-senha", "/interno/nova-senha"];
+const PUBLIC_ROUTES = ["/interno/login", "/interno/recuperar-senha", "/interno/nova-senha", "/interno/auth/"];
 
 export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;

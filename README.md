@@ -297,6 +297,24 @@ assina o evento com o A1 (XMLDSig RSA-SHA1, C14N) e envia ao NFeRecepcaoEvento4 
 só pode ser gravado com a chave de serviço (manifest_finish). Cada tentativa fica no histórico com o
 procEventoNFe (evento assinado + protocolo). 573 (duplicidade) conta como registrado.
 
+## Esqueci minha senha (e-mail pelo Resend)
+
+Fluxo: login › "Esqueci minha senha" (/interno/recuperar-senha) › e-mail do Supabase Auth › link para
+/interno/auth/confirmar › tela "Crie a sua senha". A tela responde sempre igual, exista ou não o e-mail.
+
+Configuração (uma vez, fora do código — chave nunca vai para o repositório):
+1. Resend: domínio depositovitoriasa.com.br verificado (registros DNS que o Resend mostrar) e uma API key
+   só de envio, restrita ao domínio.
+2. Supabase › Authentication › Emails › SMTP Settings: host smtp.resend.com, porta 465, usuário `resend`,
+   senha = API key, remetente nao-responda@depositovitoriasa.com.br, nome "Depósito Vitória".
+3. Supabase › Authentication › URL Configuration: Site URL https://www.depositovitoriasa.com.br e, em
+   Redirect URLs, https://www.depositovitoriasa.com.br/interno/auth/confirmar.
+4. Modelo "Reset Password" com o link
+   `{{ .SiteURL }}/interno/auth/confirmar?token_hash={{ .TokenHash }}&type=recovery` (funciona em qualquer
+   aparelho; o link padrão do Supabase só abre no mesmo navegador que pediu).
+
+Sem SMTP próprio, o Supabase só manda 2 e-mails por hora e só para membros da equipe do projeto.
+
 ## Supabase: cuidados
 
 - **Plano gratuito pausa** o projeto depois de 7 dias sem acesso. Os dados ficam, mas o
